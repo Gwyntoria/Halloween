@@ -169,7 +169,7 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
     //     printf("[ERROR] Unable to set the ChannelOrder\n");
     //     return  NULL;
     // }
-    if (aacEncoder_SetParam(g_Enc_H, AACENC_SAMPLERATE, 48000) != AACENC_OK)
+    if (aacEncoder_SetParam(g_Enc_H, AACENC_SAMPLERATE, 44100) != AACENC_OK)
     {
         aacEncClose(g_Enc_H);
         printf("[ERROR] Unable to set the SampleRate\n");
@@ -298,7 +298,7 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
         }
     
         TimeoutVal.tv_sec = 0;
-        TimeoutVal.tv_usec = 0;
+        TimeoutVal.tv_usec = 1000 * 25;
 
         s32Ret = select(maxfd+1, &read_fds, NULL, NULL, &TimeoutVal);
         if (s32Ret < 0)
@@ -307,8 +307,8 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
         }
         else if (0 == s32Ret)
         {
-            // printf("%s: get aenc stream select time out\n", __FUNCTION__);
-            usleep(500);
+            printf("%s: get aenc stream select time out\n", __FUNCTION__);
+            // usleep(500);
             continue;
         }
 
@@ -386,22 +386,24 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
                     out_buf.bufSizes = &out_size;
                     out_buf.bufElSizes = &out_elem_size;
 
+                    printf("%s: aenc stream length: %d \n", __FUNCTION__, stStream.u32Len);
                     if(aacEncEncode(g_Enc_H, &in_buf, &out_buf, &in_args, &out_args) == AACENC_OK)
                     {
                         if(out_args.numOutBytes > 0)
                         {
                             HisiPutAACDataToBuffer(outbuf, out_args.numOutBytes, lastTimeStamp, 0);
+                            printf("%s: aac length = %d \n", __FUNCTION__, out_args.numOutBytes);
                             // fwrite(outbuf, 1, out_args.numOutBytes, pfd);
                             // LOGD("[%s] %s: i = %d, aenc stream length: %d, aac length = %d \n", log_Time(), __FUNCTION__, i, stStream.u32Len, out_args.numOutBytes);
                         }
                         else
                         {
-                            printf("%s: Encoding 0 bytes\n", __FUNCTION__);
+                            // printf("%s: Encoding 0 bytes\n", __FUNCTION__);
                         }
                     }
                     else
                     {
-                        printf("%s: Encoding failed\n", __FUNCTION__);
+                        // printf("%s: Encoding failed\n", __FUNCTION__);
                     }
                 }
 

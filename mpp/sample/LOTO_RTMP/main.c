@@ -222,7 +222,7 @@ HI_S32	LOTO_RTMP_VA_CLASSIC()
     stAioAttr.enWorkmode = AIO_MODE_I2S_SLAVE;
     stAioAttr.enSoundmode = AUDIO_SOUND_MODE_MONO;
     stAioAttr.u32EXFlag = 1;
-    stAioAttr.u32FrmNum = 30;
+    stAioAttr.u32FrmNum = 5;
     stAioAttr.u32PtNumPerFrm = 1024;
     stAioAttr.u32ChnCnt = 2;
     stAioAttr.u32ClkSel = 0;
@@ -934,12 +934,13 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	LOTO_RTMP_VA_CLASSIC();
+
     if (i_algorithm == 0)
         pthread_create(&rtmp_pid, NULL, LOTO_VIDEO_AUDIO_RTMP, NULL);
     else if (i_algorithm == 1)
         pthread_create(&rtmp_pid, NULL, LOTO_VIDEO_AUDIO_RTMP_1, NULL);
     // pthread_create(&sync_pid, NULL, SYNC_TIME, NULL);
-	LOTO_RTMP_VA_CLASSIC();
 
 	while(1)
 	{	
