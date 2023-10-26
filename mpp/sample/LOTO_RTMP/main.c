@@ -217,7 +217,7 @@ HI_S32	LOTO_RTMP_VA_CLASSIC()
 
     // pthread_join(venc_Pid, 0);
 
-    stAioAttr.enSamplerate = AUDIO_SAMPLE_RATE_44100;
+    stAioAttr.enSamplerate = AUDIO_SAMPLE_RATE_48000;
     stAioAttr.enBitwidth = AUDIO_BIT_WIDTH_16;
     stAioAttr.enWorkmode = AIO_MODE_I2S_SLAVE;
     stAioAttr.enSoundmode = AUDIO_SOUND_MODE_MONO;

@@ -33,7 +33,7 @@ extern "C" {
 #include "ConfigParser.h"
 
 #define AAC_ENC_CHANNAL_COUNT (2)
-#define AAC_ENC_SAMPLERATE    (44100)
+#define AAC_ENC_SAMPLERATE    (48000)
 #define AAC_ENC_FRAME_SIZE    (1024)
 #define AAC_ENC_BITRATE       (48000)
 
@@ -174,7 +174,7 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
         return  NULL;
     }
 
-    if (aacEncoder_SetParam(g_Enc_H, AACENC_GRANULE_LENGTH, 1024) != AACENC_OK)
+    if (aacEncoder_SetParam(g_Enc_H, AACENC_GRANULE_LENGTH, AAC_ENC_FRAME_SIZE) != AACENC_OK)
     {
         aacEncClose(&g_Enc_H);
         printf("[ERROR] Unable to set the Granule length\n");
@@ -241,10 +241,10 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
     int            out_size, out_elem_size;
     void*          in_ptr;
     void*          out_ptr;
-    INT_PCM        inbuf[2048];
-    uint8_t        outbuf[2048];
+    INT_PCM        inbuf[AAC_ENC_FRAME_SIZE * aac_enc_chn];
+    uint8_t        outbuf[AAC_ENC_FRAME_SIZE * 2];
 
-    in_size      = 2048 * 2;
+    in_size      = AAC_ENC_FRAME_SIZE * 2 * aac_enc_chn;
     in_ptr       = inbuf;
     in_elem_size = 2;
 
@@ -263,7 +263,7 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
     out_buf_des.bufSizes          = &out_size;
     out_buf_des.bufElSizes        = &out_elem_size;
 
-    in_args.numInSamples = 2048 * aac_enc_chn;
+    in_args.numInSamples = AAC_ENC_FRAME_SIZE * 2 * aac_enc_chn;
 
     while (pstAencCtl->bStart)
     {
