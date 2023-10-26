@@ -170,12 +170,13 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID *p)
                     //     // SAMPLE_PRT("[%s] HI_MPI_VENC_GetStream:  ll_us_sys_timestamp = %"PRIu64", ll_first_timestamp = %"PRIu64" \n", log_Time(), ll_us_sys_timestamp, ll_first_timestamp);
                     // }
                     // stStream.pstPack[0].u64PTS = ll_us_sys_timestamp+(stStream.pstPack[0].u64PTS-ll_first_timestamp);
-                    if (n_count == 0 || n_count == 3000)
-                    {
-                        LOGD("[%s] HI_MPI_VENC_GetStream:  timestamp = %"PRIu64"", log_Time(), stStream.pstPack[0].u64PTS/1000);
-                        n_count = 0;
-                    }
-                    n_count ++;
+
+                    // if (n_count == 0 || n_count == 3000)
+                    // {
+                    //     LOGD("[%s] HI_MPI_VENC_GetStream:  timestamp = %"PRIu64"", log_Time(), stStream.pstPack[0].u64PTS/1000);
+                    //     n_count = 0;
+                    // }
+                    // n_count ++;
                     
                     if (HI_SUCCESS != s32Ret)
                     {

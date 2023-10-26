@@ -30,7 +30,12 @@ extern "C" {
 #include "EasyAACEncoderAPI.h"
 #include "faac.h"
 #include "fdk-aac/aacenc_lib.h"
+#include "ConfigParser.h"
 
+#define AAC_ENC_CHANNAL_COUNT (2)
+#define AAC_ENC_SAMPLERATE    (44100)
+#define AAC_ENC_FRAME_SIZE    (1024)
+#define AAC_ENC_BITRATE       (48000)
 
 typedef struct tagLOTO_AENC_S
 {
@@ -132,132 +137,84 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
     AUDIO_STREAM_S stStream;
     fd_set read_fds;
     struct timeval TimeoutVal;
-    HI_U64 u64TimeStamp = 0, lastTimeStamp = 0;
-    int iHead = 1;
-    // HI_U8* pStream = NULL;
-    HI_U32 u32Len = 0;
-    unsigned int out_len = 0;
-    uint8_t *audio_buf_offset ;
-    uint32_t audio_len;
-    uint8_t *p_audio;
+
+    HI_U64 u64TimeStamp  = 0;
+    HI_U64 lastTimeStamp = 0;
 
     HANDLE_AACENCODER   g_Enc_H = NULL;
     AACENC_PARAM        aacenc_param;
+
+    int aac_enc_chn = AAC_ENC_CHANNAL_COUNT;
 
     if (aacEncOpen(&g_Enc_H, 0, 2) != AACENC_OK)
     {
         printf("[ERROR] Failed to call aacEncOpen()\n");
         return  NULL;
     }
+
     if (aacEncoder_SetParam(g_Enc_H, AACENC_AOT, 2)!= AACENC_OK)
     {
-        aacEncClose(g_Enc_H);
+        aacEncClose(&g_Enc_H);
         printf("[ERROR] Unable to set the AOT\n");
         return  NULL;
     }
+
     // aacEncoder_SetParam(g_Enc_H, AACENC_BITRATEMODE, 4);
-    if (aacEncoder_SetParam(g_Enc_H, AACENC_BITRATE, 128000) != AACENC_OK)
+    if (aacEncoder_SetParam(g_Enc_H, AACENC_BITRATE, AAC_ENC_BITRATE) != AACENC_OK)
     {
-        aacEncClose(g_Enc_H);
+        aacEncClose(&g_Enc_H);
         printf("[ERROR] Unable to set the Bitrate\n");
         return  NULL;
     }
 
-    // if (aacEncoder_SetParam(g_Enc_H, AACENC_CHANNELORDER, 1) != AACENC_OK)
-    // {
-    //     aacEncClose(g_Enc_H);
-    //     printf("[ERROR] Unable to set the ChannelOrder\n");
-    //     return  NULL;
-    // }
-    if (aacEncoder_SetParam(g_Enc_H, AACENC_SAMPLERATE, 44100) != AACENC_OK)
+    if (aacEncoder_SetParam(g_Enc_H, AACENC_SAMPLERATE, AAC_ENC_SAMPLERATE) != AACENC_OK)
     {
-        aacEncClose(g_Enc_H);
+        aacEncClose(&g_Enc_H);
         printf("[ERROR] Unable to set the SampleRate\n");
         return  NULL;
     }
+
     if (aacEncoder_SetParam(g_Enc_H, AACENC_GRANULE_LENGTH, 1024) != AACENC_OK)
     {
-        aacEncClose(g_Enc_H);
+        aacEncClose(&g_Enc_H);
         printf("[ERROR] Unable to set the Granule length\n");
         return  NULL;
     }
-    if (aacEncoder_SetParam(g_Enc_H, AACENC_CHANNELMODE, MODE_2) != AACENC_OK)
+
+    CHANNEL_MODE channelMode;
+
+    if (aac_enc_chn == 1){
+        channelMode = MODE_1;
+    } else if (aac_enc_chn == 2) {
+        channelMode = MODE_2;
+    }
+
+    if (aacEncoder_SetParam(g_Enc_H, AACENC_CHANNELMODE, channelMode) != AACENC_OK)
     {
-        aacEncClose(g_Enc_H);
+        aacEncClose(&g_Enc_H);
         printf("[ERROR] Unable to set the ChannelMode\n");
         return  NULL;
     }
+
     if (aacEncoder_SetParam(g_Enc_H, AACENC_TRANSMUX, TT_MP4_ADTS) != AACENC_OK)
     {
-        aacEncClose(g_Enc_H);
+        aacEncClose(&g_Enc_H);
         printf("[ERROR] Unable to set the TransMux\n");
         return  NULL;
     }
 
     if (aacEncEncode(g_Enc_H, NULL, NULL, NULL, NULL) != AACENC_OK)
     {
-        aacEncClose(g_Enc_H);
+        aacEncClose(&g_Enc_H);
         printf("[ERROR] Unable to initialize the encoder\n");
         return  NULL;
     }
-                    
-    // int bAACBufferSize = 5096;//提供足够大的缓冲区
-    // unsigned char *pbAACBuffer = (unsigned char*)malloc(bAACBufferSize * sizeof(unsigned char)); 
-    // pStream = (HI_U8*)malloc(bAACBufferSize * sizeof(HI_U8)); 
 
-    // ULONG nSampleRate = 44100;  // 采样率
-    // UINT nChannels = 1;         // 声道数
-    // UINT nBit = 16;             // 单样本位数
-    // ULONG nInputSamples = 0;	//输入样本数
-	// ULONG nMaxInputBytes=0;     //输入最大字节
-    // faacEncHandle hEncoder;		//aac句柄
-    // faacEncConfigurationPtr pConfiguration;//aac设置指针
-    // ULONG nMaxOutputBytes = 0;	//输出所需最大空间
+    // char szServerFile[256] = "";
+	// sprintf(szServerFile, "%s/server.ini", WORK_FOLDER);
+    // int i_writefile = GetIniKeyInt((char*)"server", (char*)"writefile", szServerFile);
 
-    // hEncoder = faacEncOpen(nSampleRate, nChannels, &nInputSamples, &nMaxOutputBytes);//初始化aac句柄，同时获取最大输入样本，及编码所需最小字节
-	// nMaxInputBytes=nInputSamples*nBit/8;//计算最大输入字节,跟据最大输入样本数
-	// printf("nInputSamples:%d nMaxInputBytes:%d nMaxOutputBytes:%d\n", nInputSamples, nMaxInputBytes,nMaxOutputBytes);
-    
-    // if(hEncoder == NULL)
-    // {
-    //     printf("[ERROR] Failed to call faacEncOpen()\n");
-    //     return -1;
-    // }
-    // // pbAACBuffer = (char*)malloc(nMaxOutputBytes);
-    // // (2.1) Get current encoding configuration
-    // pConfiguration = faacEncGetCurrentConfiguration(hEncoder);//获取配置结构指针
-    // pConfiguration->inputFormat = FAAC_INPUT_16BIT;
-	// pConfiguration->outputFormat=1;
-	// pConfiguration->useTns=0;
-	// // pConfiguration->useLfe=0;
-	// pConfiguration->aacObjectType=LOW;
-	// pConfiguration->mpegVersion = MPEG4; 
-	// // pConfiguration->shortctl=SHORTCTL_NORMAL;
-	// // pConfiguration->quantqual=100;
-	// pConfiguration->bandWidth=0;
-	// // pConfiguration->bitRate=44100;
-    // pConfiguration->allowMidside = 1;
-	// printf("!!!!!!!!!!!!!pConfiguration->outputFormat is %d\n",pConfiguration->outputFormat);
-    // // (2.2) Set encoding configuration
-    // faacEncSetConfiguration(hEncoder, pConfiguration);//设置配置，根据不同设置，耗时不一样
-
-
-    // unsigned char streamBuf[1024*5];
-    // unsigned char aacBuf[2048];
-
-    char szServerFile[256] = "";
-	sprintf(szServerFile, "%s/server.ini", WORK_FOLDER);
-
-    int i_writefile = GetIniKeyInt((char*)"server", (char*)"writefile", szServerFile);
-
-    // BYTE* pbAACBuffer = (char*)malloc(nMaxOutputBytes);
-
-    // FD_ZERO(&read_fds);
-    // AencFd = HI_MPI_AENC_GetFd(pstAencCtl->AeChn);
-
-    // FD_SET(AencFd, &read_fds);
-
-    for (i = 0; i < 2; i++)
+    for (i = 0; i < aac_enc_chn; i++)
     {
        /* Set Venc Fd. */
         AencFd[i] = HI_MPI_AENC_GetFd(i);
@@ -272,27 +229,49 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
             maxfd = AencFd[i];
         }
 
-        if (i_writefile == 1)
-        {
-            HI_CHAR aszFileName[128];
-    
-            /* create file for save stream*/
-            sprintf(aszFileName, "audio_chn%d.aac", i);
-            pfd[i] = fopen(aszFileName, "w+");
-        }
     }
 
-    long long ll_us_sys_timestamp = 0;
-    long long ll_first_timestamp = 0;
+    AACENC_BufDesc in_buf_des    = {0};
+    AACENC_BufDesc out_buf_des   = {0};
+    AACENC_InArgs  in_args       = {0};
+    AACENC_OutArgs out_args      = {0};
+    int            in_identifier = IN_AUDIO_DATA;
+    int            in_size, in_elem_size;
+    int            out_identifier = OUT_BITSTREAM_DATA;
+    int            out_size, out_elem_size;
+    void*          in_ptr;
+    void*          out_ptr;
+    INT_PCM        inbuf[2048];
+    uint8_t        outbuf[2048];
 
-    int  n_count = 0;
+    in_size      = 2048 * 2;
+    in_ptr       = inbuf;
+    in_elem_size = 2;
+
+    in_buf_des.numBufs           = 1;
+    in_buf_des.bufs              = &in_ptr;
+    in_buf_des.bufferIdentifiers = &in_identifier;
+    in_buf_des.bufSizes          = &in_size;
+    in_buf_des.bufElSizes        = &in_elem_size;
+
+    out_ptr                       = outbuf;
+    out_size                      = sizeof(outbuf);
+    out_elem_size                 = 1;
+    out_buf_des.numBufs           = 1;
+    out_buf_des.bufs              = &out_ptr;
+    out_buf_des.bufferIdentifiers = &out_identifier;
+    out_buf_des.bufSizes          = &out_size;
+    out_buf_des.bufElSizes        = &out_elem_size;
+
+    in_args.numInSamples = 2048 * aac_enc_chn;
+
     while (pstAencCtl->bStart)
     {
         // FD_ZERO(&read_fds);
         // FD_SET(AencFd,&read_fds); 
 
         FD_ZERO(&read_fds);
-        for (i = 0; i < 2; i++)
+        for (i = 0; i < aac_enc_chn; i++)
         {
             FD_SET(AencFd[i], &read_fds);
         }
@@ -312,12 +291,12 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
             continue;
         }
 
-        u32Len = 0;
         // memset(aacBuf, 0, sizeof(aacBuf));
         // memset(streamBuf, 0, 1024*5);
 
-        for (i = 0; i < 2; i ++)
+        for (i = 0; i < aac_enc_chn; i ++)
         {
+            int st = i;
             if (FD_ISSET(AencFd[i], &read_fds))
             {
                 /* get stream from aenc chn */
@@ -330,179 +309,50 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
                     return NULL;
                 }
 
-                if (n_count == 0 || n_count == 3000)
-                {
-                    // LOGD("[%s] LOTO_COMM_AUDIO_AencProc:  timestamp = %"PRIu64"", log_Time(), stStream.u64TimeStamp/1000);
-                    n_count = 0;
-                }
-                n_count ++;
+                // printf("%s: aenc stream[%d] length: %d \n", __FUNCTION__, i, stStream.u32Len);
 
-                if (i == 0)
-                {
+                // if (n_count == 0 || n_count == 3000)
+                // {
+                //     LOGD("[%s] LOTO_COMM_AUDIO_AencProc:  timestamp = %"PRIu64"", log_Time(), stStream.u64TimeStamp/1000);
+                //     n_count = 0;
+                // }
+                // n_count ++;
+
+                // if (i == 0)
+                // {
                     // memcpy(streamBuf+u32Len, stStream.pStream, stStream.u32Len);
-                    u32Len += stStream.u32Len;
                     lastTimeStamp = stStream.u64TimeStamp;
-
-                    AACENC_BufDesc in_buf = { 0 }, out_buf = { 0 };
-                    AACENC_InArgs in_args = { 0 };
-                    AACENC_OutArgs out_args = { 0 };
-                    int in_identifier = IN_AUDIO_DATA;
-                    int in_size, in_elem_size;
-                    int out_identifier = OUT_BITSTREAM_DATA;
-                    int out_size, out_elem_size;
-                    int read, i;
-                    void *in_ptr, *out_ptr;
-                    unsigned char outbuf[2048];
-                    uint16_t inbuf[2048];
-                    AACENC_ERROR err;
 
                     for (k = 0; k < stStream.u32Len; k += 2)
                     {
-                        // inbuf[2*k] = stStream.pStream[k];
-                        // inbuf[2*k+1] = stStream.pStream[k+1];
-                        // inbuf[2*k+2] = stStream.pStream[k];
-                        // inbuf[2*k+3] = stStream.pStream[k+1];
-
-                        inbuf[k+1] = inbuf[k] = stStream.pStream[k] | (stStream.pStream[k+1] << 8);
+                        inbuf[st] = (stStream.pStream[k]) | stStream.pStream[k + 1] << 8;
+                        st += aac_enc_chn;
                     }
 
-                    in_size = stStream.u32Len*2;
-                    in_ptr = inbuf;
-                    in_elem_size = 2;
-
-                    in_args.numInSamples = stStream.u32Len/2;
-                    in_buf.numBufs = 1;
-                    in_buf.bufs = &in_ptr;
-                    in_buf.bufferIdentifiers = &in_identifier;
-                    in_buf.bufSizes = &in_size;
-                    in_buf.bufElSizes = &in_elem_size;
-
-                    out_ptr = outbuf;
-                    out_size = sizeof(outbuf);
-                    out_elem_size = 1;
-                    out_buf.numBufs = 1;
-                    out_buf.bufs = &out_ptr;
-                    out_buf.bufferIdentifiers = &out_identifier;
-                    out_buf.bufSizes = &out_size;
-                    out_buf.bufElSizes = &out_elem_size;
-
-                    printf("%s: aenc stream length: %d \n", __FUNCTION__, stStream.u32Len);
-                    if(aacEncEncode(g_Enc_H, &in_buf, &out_buf, &in_args, &out_args) == AACENC_OK)
-                    {
-                        if(out_args.numOutBytes > 0)
-                        {
-                            HisiPutAACDataToBuffer(outbuf, out_args.numOutBytes, lastTimeStamp, 0);
-                            printf("%s: aac length = %d \n", __FUNCTION__, out_args.numOutBytes);
-                            // fwrite(outbuf, 1, out_args.numOutBytes, pfd);
-                            // LOGD("[%s] %s: i = %d, aenc stream length: %d, aac length = %d \n", log_Time(), __FUNCTION__, i, stStream.u32Len, out_args.numOutBytes);
-                        }
-                        else
-                        {
-                            // printf("%s: Encoding 0 bytes\n", __FUNCTION__);
-                        }
-                    }
-                    else
-                    {
-                        // printf("%s: Encoding failed\n", __FUNCTION__);
-                    }
-                }
-
-                // if (ll_us_sys_timestamp == 0)
-                // {
-                //     ll_us_sys_timestamp = get_us_timestamp();
-                //     ll_first_timestamp = stStream.u64TimeStamp;
-                // }
-
-                // stStream.u64TimeStamp = ll_us_sys_timestamp+(stStream.u64TimeStamp-ll_first_timestamp);
-                
-                    // LOGD("[%s] HI_MPI_AENC_GetStream: i = %d, timestamp = %"PRIu64", stream Len = %ld \n", log_Time(), i, lastTimeStamp/1000, stStream.u32Len);
-
-                    // int ret = faacEncEncode(hEncoder, (int*) stStream.pStream, u32Len/2, pbAACBuffer, nMaxOutputBytes);
-                    // audio_buf_offset = pbAACBuffer;
-                    // if (ret > 0)
-                    // {
-                    //     // LOGD("[%s] faacEncEncode \n", log_Time());
-                    //     p_audio = get_adts(&audio_len, &audio_buf_offset, pbAACBuffer, ret);
-                    //     if (p_audio != NULL){
-                    //         HisiPutAACDataToBuffer(p_audio, audio_len, lastTimeStamp, 0);
-                    //         // if (ret != audio_len)
-                    //             // LOGD("[%s] LOTO_COMM_AUDIO_AencProc:  Encoder Out_Len = %ld, Audio Length = %ld", log_Time(), ret, audio_len);
-                    //     }
-                    //     else
-                    //     {
-                    //         LOGD("[%s] LOTO_COMM_AUDIO_AencProc:  Audio Encode invalid", log_Time());
-                    //     }
-                    // }
-
-                // LOGD("[%s] LOTO_COMM_AUDIO_AencProc:  Encoder Out_Len1 = %ld, Out_Len2 = %ld, Audio Length = %ld", log_Time(), out_len, ret, u32Len);	
-
-
-                HI_MPI_AENC_ReleaseStream(i, &stStream);
-                
-                /* finally you must release the stream */
-                
+                HI_MPI_AENC_ReleaseStream(i, &stStream);                
             }
         }
 
-        // if (u32Len > 0)
-        // {
-        //     int ret = faacEncEncode(hEncoder, (int*) streamBuf, u32Len/2, pbAACBuffer, nMaxOutputBytes);
-        //     audio_buf_offset = pbAACBuffer;
-        //     if (ret > 0)
-        //     {
-        //         // LOGD("[%s] faacEncEncode \n", log_Time());
-        //         p_audio = get_adts(&audio_len, &audio_buf_offset, pbAACBuffer, ret);
-        //         if (p_audio != NULL){
-        //             HisiPutAACDataToBuffer(p_audio, audio_len, lastTimeStamp, 0);
-        //             // if (ret != audio_len)
-        //                 // LOGD("[%s] LOTO_COMM_AUDIO_AencProc:  Encoder Out_Len = %ld, Audio Length = %ld", log_Time(), ret, audio_len);
-        //         }
-        //         else
-        //         {
-        //             LOGD("[%s] LOTO_COMM_AUDIO_AencProc:  Audio Encode invalid", log_Time());
-        //         }
-        //     }
-        // }
+        if (aacEncEncode(g_Enc_H, &in_buf_des, &out_buf_des, &in_args, &out_args) ==
+            AACENC_OK) {
+            if (out_args.numOutBytes > 0) {
+                HisiPutAACDataToBuffer(outbuf, out_args.numOutBytes, lastTimeStamp, 0);
 
-        // if (u32Len > 0)
-        // {
-        //     if((Easy_AACEncoder_Encode(g_Easy_H, streamBuf, u32Len, aacBuf, &out_len)) > 0)
-        //     {
-        //         HisiPutAACDataToBuffer(aacBuf, out_len, lastTimeStamp, 0);
-        //         LOGD("[%s] LOTO_COMM_AUDIO_AencProc:  Encoder Out_Len = %ld, PCM Len = %ld, timestamp = %"PRIu64"", log_Time(), out_len, u32Len, lastTimeStamp/1000);
+                printf("%s: aac length = %d \n", __FUNCTION__, out_args.numOutBytes);
 
-        //         if (i_writefile == 1 && pfd[0] != NULL)
-        //             fwrite(aacBuf, 1, out_len, pfd[0]);
+                // print_data_stream_hex(outbuf, out_args.numOutBytes);
+            } else {
+                printf("%s: Encoded 0 bytes\n", __FUNCTION__);
+            }
+        } else {
+            printf("%s: Encoding failed\n", __FUNCTION__);
+        }
 
-        //         // LOGD("[%s] Easy_AACEncoder_Encode \n", log_Time());
-        //         // audio_buf_offset = aacBuf;
-        //         // p_audio = get_adts(&audio_len, &audio_buf_offset, aacBuf, out_len);
-        //         // if (p_audio != NULL){
-        //         //     HisiPutAACDataToBuffer(p_audio, audio_len, lastTimeStamp, 0);
-        //         //     if (out_len != audio_len)
-        //         //         LOGD("[%s] LOTO_COMM_AUDIO_AencProc:  Encoder Out_Len = %ld, Audio Length = %ld", log_Time(), out_len, audio_len);
-        //         // }
-        //         // else
-        //         // {
-        //         //     LOGD("[%s] LOTO_COMM_AUDIO_AencProc:  Audio Encode invalid", log_Time());
-        //         // }
-        //     }
-        // }
+        memset(inbuf, 0, sizeof(inbuf));
+        memset(outbuf, 0, sizeof(outbuf));
     }
 
-    // free(pbAACBuffer);
-    // free(pStream);
-    // if (pbAACBuffer != NULL)
-    //     free(pbAACBuffer);
-
-    for (i = 0; i < 1; i ++)
-    {
-        if (pfd[i] != NULL)
-            fclose(pfd[i]);
-    }
-    // faacEncClose(hEncoder);
-
-    aacEncClose(g_Enc_H);
+    aacEncClose(&g_Enc_H);
 
     pstAencCtl->bStart = HI_FALSE;
     return NULL;

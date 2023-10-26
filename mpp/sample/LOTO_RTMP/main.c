@@ -86,32 +86,32 @@ int is_rtmp_write = 0;
 
 HI_S32	LOTO_RTMP_VA_CLASSIC()
 {
-    SAMPLE_VI_MODE_E enViMode = SAMPLE_VI_MODE_1_720P;//SAMPLE_VI_MODE_1_1080P;
-    VIDEO_NORM_E gs_enNorm = VIDEO_ENCODING_MODE_PAL;
-    HI_U32 u32ViChnCnt = 1;
-    HI_S32 s32VpssGrpCnt = 1;
-    PAYLOAD_TYPE_E enPayLoad= PT_H264;
+    SAMPLE_VI_MODE_E enViMode      = SAMPLE_VI_MODE_1_720P;
+    VIDEO_NORM_E     gs_enNorm     = VIDEO_ENCODING_MODE_PAL;
+    HI_U32           u32ViChnCnt   = 1;
+    HI_S32           s32VpssGrpCnt = 1;
+    PAYLOAD_TYPE_E   enPayLoad     = PT_H264;
 
-    VPSS_GRP VpssGrp = 0;
+    VPSS_GRP        VpssGrp = 0;
     VPSS_GRP_ATTR_S stGrpAttr;
-    VENC_GRP VencGrp = 0;
-    VENC_CHN VencChn = 0;
-    SAMPLE_RC_E enRcMode;
+    VENC_GRP        VencGrp = 0;
+    VENC_CHN        VencChn = 0;
+    SAMPLE_RC_E     enRcMode;
 
     SIZE_S stSize;
-    
-    VB_CONF_S stVbConf;
-    HI_U32 u32BlkSize;
 
-    AUDIO_DEV   AiDev = 0;
-    HI_S32 i, s32Ret= HI_SUCCESS;
+    VB_CONF_S stVbConf;
+    HI_U32    u32BlkSize;
+
+    AUDIO_DEV  AiDev = 0;
+    HI_S32     i, s32Ret = HI_SUCCESS;
     AIO_ATTR_S stAioAttr;
-    HI_S32      s32AiChnCnt;
-    HI_S32      s32AencChnCnt;
-    AENC_CHN    AeChn;
-    AI_CHN      AiChn;
-    pthread_t       aenc_Pid;
-    pthread_t       venc_Pid;
+    HI_S32     s32AiChnCnt;
+    HI_S32     s32AencChnCnt;
+    AENC_CHN   AeChn;
+    AI_CHN     AiChn;
+    pthread_t  aenc_Pid;
+    pthread_t  venc_Pid;
 
     InitParam initParam;
 
@@ -479,20 +479,6 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
 
     while(1)
 	{
-        // if (prtmp != NULL && !rtmp_sender_isOK(prtmp))
-        // {
-        //     LOGE("[%s] rtmp is disconnected \n", log_Time());
-        //     rtmp_sender_stop_publish(prtmp);
-        //     rtmp_sender_free(prtmp);
-        //     sleep(1);
-        //     prtmp = rtmp_sender_alloc(sz_pushurl);
-        //     if (rtmp_sender_start_publish(prtmp, 0, 0) != 0)
-        //     {
-        //         LOGE("[%s] connect %s fail \n", log_Time(), sz_pushurl);
-        //     }
-        // }
-      
-
         if (a_writed == true && i_with_audio == 1)
         {
             a_ringbuflen = ringget_audio(&a_ringinfo);
@@ -738,7 +724,7 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
 
                 if (v_count == 0 || v_count == 3000)
                 {
-                    LOGD("[%s] rtmp_write_video:  last_timeCount = %"PRIu64", video timestamp = %"PRIu64"", log_Time(), last_timeCount, v_ringinfo.timestamp / 1000);
+                    // LOGD("[%s] rtmp_write_video:  last_timeCount = %"PRIu64", video timestamp = %"PRIu64"", log_Time(), last_timeCount, v_ringinfo.timestamp / 1000);
 
                     int i = 0;
                     char s_print[512] = "";
@@ -749,7 +735,7 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                         sprintf(s_print, "%s, %d", s_print, stat_count[i]);
                         stat_count[i] = 0;
                     }
-                    LOGD("[%s] rtmp_write_video: statistics write time = %s", log_Time(), s_print);
+                    // LOGD("[%s] rtmp_write_video: statistics write time = %s", log_Time(), s_print);
 
                     v_count = 0;
                 }
@@ -907,12 +893,17 @@ int main(int argc, char *argv[])
 
     InitTCpRtpLog();
 
-	if(argc!=2)
-	{
-		// printf("Usage: rtmp url -eg<< rtmp://push.zhuagewawa.com/record/w054?wsSecret=099122fec49ef6a80bf58d7147f0d39c&wsABSTime=1677808601 >>\n");
-        LOGD ("[%s] Usage: rtmp url -eg<< rtmp://push.zhuagewawa.com/record/w054?wsSecret=099122fec49ef6a80bf58d7147f0d39c&wsABSTime=1677808601 >>\n", log_Time());
-		return -1;
-	}
+    if (argc != 2) {
+        // printf("Usage: rtmp url -eg<<
+        // rtmp://push.zhuagewawa.com/record/w054?wsSecret=099122fec49ef6a80bf58d7147f0d39c&wsABSTime=1677808601
+        // >>\n");
+        LOGD("[%s] Usage: rtmp url -eg<< "
+             "rtmp://push.zhuagewawa.com/record/"
+             "w054?wsSecret=099122fec49ef6a80bf58d7147f0d39c&wsABSTime="
+             "1677808601 >>\n",
+             log_Time());
+        return -1;
+    }
 
     char szServerFile[256] = "";
 	sprintf(szServerFile, "%s/server.ini", WORK_FOLDER);
@@ -934,13 +925,12 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	LOTO_RTMP_VA_CLASSIC();
-
     if (i_algorithm == 0)
         pthread_create(&rtmp_pid, NULL, LOTO_VIDEO_AUDIO_RTMP, NULL);
     else if (i_algorithm == 1)
         pthread_create(&rtmp_pid, NULL, LOTO_VIDEO_AUDIO_RTMP_1, NULL);
     // pthread_create(&sync_pid, NULL, SYNC_TIME, NULL);
+	LOTO_RTMP_VA_CLASSIC();
 
 	while(1)
 	{	

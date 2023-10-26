@@ -105,6 +105,8 @@ long long get_us_timestamp();
 
 int InitTCpRtpLog();
 
+void print_data_stream_hex(const uint8_t* data, unsigned long len);
+
 
 #ifdef __cplusplus
 }
