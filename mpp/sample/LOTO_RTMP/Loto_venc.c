@@ -164,7 +164,7 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID *p)
                     
                     // if (ll_us_sys_timestamp == 0)
                     // {
-                    //     ll_us_sys_timestamp = get_us_timestamp();
+                    //     ll_us_sys_timestamp = get_timestamp_us();
                     //     ll_first_timestamp = stStream.pstPack[0].u64PTS;
 
                     //     // SAMPLE_PRT("[%s] HI_MPI_VENC_GetStream:  ll_us_sys_timestamp = %"PRIu64", ll_first_timestamp = %"PRIu64" \n", log_Time(), ll_us_sys_timestamp, ll_first_timestamp);

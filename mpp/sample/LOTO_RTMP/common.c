@@ -138,7 +138,7 @@ long long get_timestamp(char* pszTS, int isMSec)
     return timestamp;
 }
 
-long long get_us_timestamp()
+long long get_timestamp_us()
 {
     long long 	us_timestamp;
     char        szT[64] = "";

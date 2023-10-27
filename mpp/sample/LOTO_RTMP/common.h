@@ -96,12 +96,13 @@ typedef struct Msg {
     int  isopen;
 }Loto_Msg;
 
+char* log_Time(void);
 
-char*   log_Time(void);
-int     int2string(long long value, char * output);
-long long string2int(const char *str);
+int       int2string(long long value, char* output);
+long long string2int(const char* str);
+
 long long get_timestamp(char* pszTS, int isMSec);
-long long get_us_timestamp();
+long long get_timestamp_us();
 
 int InitTCpRtpLog();
 

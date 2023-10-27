@@ -321,7 +321,6 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
                 // if (i == 0)
                 // {
                     // memcpy(streamBuf+u32Len, stStream.pStream, stStream.u32Len);
-                    lastTimeStamp = stStream.u64TimeStamp;
 
                     for (k = 0; k < stStream.u32Len; k += 2)
                     {
@@ -336,9 +335,11 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
         if (aacEncEncode(g_Enc_H, &in_buf_des, &out_buf_des, &in_args, &out_args) ==
             AACENC_OK) {
             if (out_args.numOutBytes > 0) {
+                lastTimeStamp = stStream.u64TimeStamp;
+                printf("aac timestamp: %llu\n", lastTimeStamp);
                 HisiPutAACDataToBuffer(outbuf, out_args.numOutBytes, lastTimeStamp, 0);
 
-                printf("%s: aac length = %d \n", __FUNCTION__, out_args.numOutBytes);
+                // printf("%s: aac length = %d \n", __FUNCTION__, out_args.numOutBytes);
 
                 // print_data_stream_hex(outbuf, out_args.numOutBytes);
             } else {

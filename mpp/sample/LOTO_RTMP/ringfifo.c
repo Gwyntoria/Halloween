@@ -229,6 +229,8 @@ HI_S32 HisiPutH264DataToBuffer(VENC_STREAM_S *pstStream)
 
         ringfifo[iput].size= len;
         ringfifo[iput].timestamp = pstStream->pstPack[0].u64PTS;
+        printf("264 timestamp: %llu\n", ringfifo[iput].timestamp);
+
 
         // printf("HisiPutH264DataToBuffer: ringfifo[iput].timestamp = %"PRIu64" \n ", ringfifo[iput].timestamp);
 		// printf("iframe=%d\n",iframe);

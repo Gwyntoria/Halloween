@@ -405,10 +405,10 @@ void* LOTO_VIDEO_AUDIO_RTMP(void *p)
             //     usleep(200);
 
             is_rtmp_write = 1;
-            t1 = get_us_timestamp();
+            t1 = get_timestamp_us();
             if (prtmp != NULL)
 			    rtmp_sender_write_avc_frame(prtmp, v_ringinfo.buffer, v_ringinfo.size, v_timeCount, 0);
-            t2 = get_us_timestamp();
+            t2 = get_timestamp_us();
             is_rtmp_write = 0;
 
             int offset = (int)((t2 - t1)/1000);
@@ -479,6 +479,7 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
 
     while(1)
 	{
+        // 判断是否可进行推流
         if (a_writed == true && i_with_audio == 1)
         {
             a_ringbuflen = ringget_audio(&a_ringinfo);
@@ -531,10 +532,10 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                         if ((a_timeCount + a_offset) > v_timeCount)
                         {
                             is_rtmp_write = 1;
-                            t1 = get_us_timestamp();
+                            t1 = get_timestamp_us();
                             if (prtmp != NULL)
-			                    rtmp_sender_write_avc_frame(prtmp, v_ringinfo.buffer, v_ringinfo.size, v_timeCount-start_time, 0);
-                            t2 = get_us_timestamp();
+			                    rtmp_sender_write_avc_frame(prtmp, v_ringinfo.buffer, v_ringinfo.size, v_timeCount - start_time, 0);
+                            t2 = get_timestamp_us();
                             is_rtmp_write = 0;
                             v_writed = true;
                             n_v_count ++;
@@ -548,10 +549,10 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                     {
                         start_time = v_timeCount;
                         is_rtmp_write = 1;
-                        t1 = get_us_timestamp();
+                        t1 = get_timestamp_us();
                         if (prtmp != NULL)
 			                rtmp_sender_write_avc_frame(prtmp, v_ringinfo.buffer, v_ringinfo.size, 0, 0);
-                        t2 = get_us_timestamp();
+                        t2 = get_timestamp_us();
                         is_rtmp_write = 0;
                         v_writed = true;
                         n_v_count ++;
@@ -586,10 +587,10 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                 {
                     start_time = v_timeCount;
                     is_rtmp_write = 1;
-                    t1 = get_us_timestamp();
+                    t1 = get_timestamp_us();
                     if (prtmp != NULL)
 			            rtmp_sender_write_avc_frame(prtmp, v_ringinfo.buffer, v_ringinfo.size, 0, 0);
-                    t2 = get_us_timestamp();
+                    t2 = get_timestamp_us();
                     is_rtmp_write = 0;
                     v_writed = true;
                     n_v_count ++;
@@ -615,10 +616,10 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                         if ((a_timeCount + a_offset) > v_timeCount)
                         {
                             is_rtmp_write = 1;
-                            t1 = get_us_timestamp();
+                            t1 = get_timestamp_us();
                             if (prtmp != NULL)
 			                    rtmp_sender_write_avc_frame(prtmp, v_ringinfo.buffer, v_ringinfo.size, v_timeCount-start_time, 0);
-                            t2 = get_us_timestamp();
+                            t2 = get_timestamp_us();
                             is_rtmp_write = 0;
                             v_writed = true;
                             last_timeCount = v_timeCount - start_time;
@@ -636,13 +637,13 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                     }
                     else
                     {
-                        t1 = get_us_timestamp();
+                        t1 = get_timestamp_us();
                         if (v_timeCount < start_time)
                             v_timeCount = start_time;
                         is_rtmp_write = 1;
                         if (prtmp != NULL)
 			                rtmp_sender_write_avc_frame(prtmp, v_ringinfo.buffer, v_ringinfo.size, v_timeCount-start_time, 0);
-                        t2 = get_us_timestamp();
+                        t2 = get_timestamp_us();
                         is_rtmp_write = 0;
 
                         v_writed = true;
@@ -687,10 +688,10 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                     if (i_with_audio == 0 || ((last_timeCount + a_offset) >= v_timeCount))
                     {
                         is_rtmp_write = 1;
-                        t1 = get_us_timestamp();
+                        t1 = get_timestamp_us();
                         if (prtmp != NULL)
                             rtmp_sender_write_avc_frame(prtmp, v_ringinfo.buffer, v_ringinfo.size, v_timeCount-start_time, 0);
-                        t2 = get_us_timestamp();
+                        t2 = get_timestamp_us();
                         is_rtmp_write = 0;
                         v_writed = true;
                         last_timeCount = v_timeCount - start_time;
@@ -708,6 +709,7 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                 }
             }
 
+            /* Calculate the distribution of streaming duration for each frame */
             if (t1 != 0 && t2 != 0)
             {
                 int offset = (int)((t2 - t1)/1000);
