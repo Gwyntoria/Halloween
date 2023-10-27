@@ -1,1 +1,0 @@
-arm-hisiv100nptl-linux-gcc -o test  test.c -L../rtmpdump/librtmp -static -lrtmp -ldl -L/home/ssy/lib -L/opt/hisi-linux-nptl/arm-hisiv100-linux/lib -lssl -lcrypto -ldl -lz -I/home/ssy/lib/include -lfaac -L/home/ssy/lib/lib -lm -I../rtmpdump/librtmp/
