@@ -454,26 +454,31 @@ void* LOTO_VIDEO_AUDIO_RTMP(void *p)
 
 void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
 {
-    uint64_t v_timeCount = 0;
-    uint64_t a_timeCount = 0;
+
     uint64_t last_timeCount = 0;
 
-    int      v_offset = 34;
-    int      a_offset = 22;
-    bool     v_writed = true;
-    bool     a_writed = true;
-    int      n_v_count = 0;
-    int      v_count = 0;
+    int a_offset = 22;
+    int v_offset = 34;
 
-    long long start_time = 0;
-    long long a_start_time = 0;
+    bool a_writed = true;
+    bool v_writed = true;
 
-    struct ringbuf v_ringinfo;
-    int v_ringbuflen=0;
+    int n_v_count = 0;
+    int v_count   = 0;
 
-    struct ringbuf a_ringinfo;
-    int a_ringbuflen=0;
-    long long t1 = 0, t2 = 0;
+    uint64_t start_time   = 0;
+    uint64_t a_start_time = 0;
+    uint64_t v_start_time = 0;
+    uint64_t a_current_time  = 0;
+    uint64_t v_current_time  = 0;
+
+    struct ringbuf a_ringinfo   = {0};
+    int            a_ringbuflen = 0;
+
+    struct ringbuf v_ringinfo   = {0};
+    int            v_ringbuflen = 0;
+
+    uint64_t t1 = 0, t2 = 0;
 
     LOGD("[%s] LOTO_VIDEO_AUDIO_RTMP_1 \n", log_Time());
 
@@ -484,8 +489,26 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
         {
             a_ringbuflen = ringget_audio(&a_ringinfo);
             // LOGD("[%s] LOTO_VIDEO_AUDIO_RTMP_1, a_ringbuflen = %d", log_Time(), a_ringbuflen);
-            if (a_ringbuflen > 0)
+            if (a_ringbuflen > 0) {
+                a_current_time = get_timestamp(NULL, 1);
+
+                if (start_time == 0) {
+                    start_time = a_current_time;
+                }
+
                 a_writed = false;
+
+                if (prtmp != NULL) {
+                    uint64_t a_timestamp = a_current_time - start_time;
+                    rtmp_sender_write_aac_frame(prtmp, a_ringinfo.buffer,
+                                                a_ringinfo.size, a_timestamp,
+                                                a_start_time);
+
+                    printf("aac timestap: %llu\n", a_timestamp);
+
+                    a_writed = true;
+                }
+            }
         }
         else
         {
@@ -496,8 +519,26 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
         {
             v_ringbuflen = ringget(&v_ringinfo);
             // LOGD("[%s] LOTO_VIDEO_AUDIO_RTMP_1, v_ringbuflen = %d", log_Time(), v_ringbuflen);
-            if (v_ringbuflen > 0)
+            if (v_ringbuflen > 0) {
+                v_current_time = get_timestamp(NULL, 1);
+
+                if (start_time == 0) {
+                    start_time = v_current_time;
+                }
+
                 v_writed = false;
+
+                if (prtmp != NULL) {
+                    uint64_t v_timestamp = v_current_time - start_time;
+                    rtmp_sender_write_avc_frame(prtmp, v_ringinfo.buffer,
+                                                v_ringinfo.size, v_timestamp,
+                                                0);
+
+                    printf("264 timestap: %llu\n", v_timestamp);
+
+                    v_writed = true;
+                }
+            }
         }
         else
         {
@@ -507,18 +548,14 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
         t1 = 0;
         t2 = 0;
 
+        // 已经获取到音视频帧
         if (a_ringbuflen > 0 || v_ringbuflen > 0)
         {
-            if (a_ringbuflen > 0)
-                a_timeCount =  (a_ringinfo.timestamp / 1000);
-
-            if (v_ringbuflen > 0)
-                v_timeCount = (v_ringinfo.timestamp / 1000);
-            
-            if (start_time == 0)
-            {
+           /*  if (start_time == 0) {
                 if (a_ringbuflen > 0 && v_ringbuflen > 0)
                 {
+                    start_time = a_timeCount < v_timeCount ? a_timeCount : v_timeCount;
+
                     if (a_timeCount <= v_timeCount)
                     {
                         start_time = a_timeCount;
@@ -577,7 +614,7 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                 {
                     start_time = a_timeCount;
                     if (prtmp != NULL)
-			            rtmp_sender_write_aac_frame(prtmp, a_ringinfo.buffer, a_ringinfo.size, 0, start_time);
+			            rtmp_sender_write_aac_frame(prtmp, a_ringinfo.buffer, a_ringinfo.size, 0, a_ringinfo.timestamp - start_time);
                     a_writed = true;
                     last_timeCount = 0;
                     a_ringbuflen = 0;
@@ -589,7 +626,7 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                     is_rtmp_write = 1;
                     t1 = get_timestamp_us();
                     if (prtmp != NULL)
-			            rtmp_sender_write_avc_frame(prtmp, v_ringinfo.buffer, v_ringinfo.size, 0, 0);
+			            rtmp_sender_write_avc_frame(prtmp, v_ringinfo.buffer, v_ringinfo.size, v_timeCount - start_time, 0);
                     t2 = get_timestamp_us();
                     is_rtmp_write = 0;
                     v_writed = true;
@@ -599,9 +636,7 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                     v_ringbuflen = 0;
                     // LOGD("[%s] rtmp_write_video_0_2:  last_timeCount = %"PRIu64", video timestamp = %"PRIu64"", log_Time(), last_timeCount, v_ringinfo.timestamp / 1000);
                 }
-            }
-            else
-            {
+            } else {
                 if (a_ringbuflen > 0 && v_ringbuflen > 0)
                 {
                     if (a_timeCount <= v_timeCount)
@@ -708,9 +743,10 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                     }
                 }
             }
+ */
 
             /* Calculate the distribution of streaming duration for each frame */
-            if (t1 != 0 && t2 != 0)
+           /*  if (t1 != 0 && t2 != 0)
             {
                 int offset = (int)((t2 - t1)/1000);
             
@@ -742,7 +778,7 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                     v_count = 0;
                 }
                 v_count ++;
-            }
+            } */
             
         }
         else
@@ -750,6 +786,9 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
             a_writed = true;
             v_writed = true;
         }
+
+        a_ringbuflen = 0;
+        v_ringbuflen = 0;
         usleep(500);
 	}
 }
