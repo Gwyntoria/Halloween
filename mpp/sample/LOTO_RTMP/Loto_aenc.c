@@ -341,7 +341,7 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
 
                 // printf("%s: aac length = %d \n", __FUNCTION__, out_args.numOutBytes);
 
-                print_data_stream_hex(outbuf, out_args.numOutBytes);
+                // print_data_stream_hex(outbuf, out_args.numOutBytes);
             } else {
                 printf("%s: Encoded 0 bytes\n", __FUNCTION__);
             }

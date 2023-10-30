@@ -504,7 +504,7 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                                                 a_ringinfo.size, a_timestamp,
                                                 a_start_time);
 
-                    printf("aac timestap: %llu\n", a_timestamp);
+                    // printf("aac timestap: %llu\n", a_timestamp);
 
                     a_writed = true;
                 }
@@ -534,7 +534,7 @@ void* LOTO_VIDEO_AUDIO_RTMP_1(void *p)
                                                 v_ringinfo.size, v_timestamp,
                                                 0);
 
-                    printf("264 timestap: %llu\n", v_timestamp);
+                    // printf("264 timestap: %llu\n", v_timestamp);
 
                     v_writed = true;
                 }
