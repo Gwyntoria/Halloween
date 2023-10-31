@@ -10,8 +10,9 @@
 #include "sample_comm.h"
 #include <inttypes.h>
 #include "common.h"
-#include "EasyAACEncoderAPI.h"
-extern Easy_Handle g_Easy_H;
+// #include "EasyAACEncoderAPI.h"
+
+// extern Easy_Handle g_Easy_H;
 
 
 #define NMAX 32
@@ -203,7 +204,7 @@ HI_S32 HisiPutH264DataToBuffer(VENC_STREAM_S *pstStream)
 
     if(n<NMAX)
     {
-        ringfifo[iput].getframe_timestamp = get_timestamp(NULL, 1);
+        ringfifo[iput].getframe_timestamp = GetTimestamp();
 
 		for (i = 0; i < pstStream->u32PackCount; i++)
 		{
@@ -420,7 +421,7 @@ void ringput_audio(unsigned char *buffer,int size)
 
 //     if(a_n<NMAX)
 //     {
-//         a_ringfifo[a_iput].getframe_timestamp = get_timestamp(NULL, 1);
+//         a_ringfifo[a_iput].getframe_timestamp = GetTimestamp();
 // 		memcpy(a_ringfifo[a_iput].buffer, aacStream->pStream, aacStream->u32Len);
 //         a_ringfifo[a_iput].size= aacStream->u32Len;
 //         a_ringfifo[a_iput].timestamp = aacStream->u64TimeStamp;
@@ -441,7 +442,7 @@ HI_S32 HisiPutAACDataToBuffer(unsigned char *pAACData, unsigned int iDataLen, un
     {
         // if (iHead == 1)
         // {
-        //     a_ringfifo[a_iput].getframe_timestamp = get_timestamp(NULL, 1);
+        //     a_ringfifo[a_iput].getframe_timestamp = GetTimestamp();
         //     memcpy(a_ringfifo[a_iput].buffer, pAACData, iDataLen);
         //     a_ringfifo[a_iput].size= iDataLen;
         //     a_ringfifo[a_iput].timestamp = u64TimeStamp;
@@ -449,7 +450,7 @@ HI_S32 HisiPutAACDataToBuffer(unsigned char *pAACData, unsigned int iDataLen, un
         // }
         // else
         // {
-        //     a_ringfifo[a_iput].getframe_timestamp = get_timestamp(NULL, 1);
+        //     a_ringfifo[a_iput].getframe_timestamp = GetTimestamp();
         //     if (a_iput == 0)
         //     {
         //         memcpy(a_ringfifo[a_iput].buffer, a_ringfifo[NMAX-1].buffer, iDataLen);
@@ -465,7 +466,7 @@ HI_S32 HisiPutAACDataToBuffer(unsigned char *pAACData, unsigned int iDataLen, un
         //     LOGD("[%s] HisiPutAACDataToBuffer: u64TimeStamp = %"PRIu64", pos = %d, a_ringfifo[a_iput].size = %d \n ", log_Time(), u64TimeStamp, a_iput, a_ringfifo[a_iput].size);
         // }
 
-        a_ringfifo[a_iput].getframe_timestamp = get_timestamp(NULL, 1);
+        a_ringfifo[a_iput].getframe_timestamp = GetTimestamp();
         memcpy(a_ringfifo[a_iput].buffer, pAACData, iDataLen);
         a_ringfifo[a_iput].size= iDataLen;
         a_ringfifo[a_iput].timestamp = u64TimeStamp;

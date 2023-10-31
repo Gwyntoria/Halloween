@@ -1,36 +1,35 @@
+VER_MAJOR:=0
+VER_MINOR:=2
+VER_BUILD:=1
+BIN_VERSION:=$(VER_MAJOR).$(VER_MINOR).$(VER_BUILD)
+
 include ../Makefile.param
 
-INC_FLAGS +=-I../librtmp -I./include
+# c source files
+SRCS := $(wildcard *.c)
 
-# INC_FLAGS +=-I../hisi_rtmp_hi3520d/include
+# c object files
+C_OBJS  := $(patsubst %.c, %.o, $(SRCS))
 
-SRCS := $(wildcard ./main.c)
-SRCS += $(wildcard ./ringfifo.c)
-SRCS += $(wildcard ./common.c)
-SRCS += $(wildcard ./Loto_venc.c)
-SRCS += $(wildcard ./Loto_aenc.c)
-SRCS += $(wildcard ./ConfigParser.c)
-SRCS += $(wildcard ./libfaac/aacquant.c)
-SRCS += $(wildcard ./libfaac/backpred.c)
-SRCS += $(wildcard ./libfaac/bitstream.c)
-SRCS += $(wildcard ./libfaac/channels.c)
-SRCS += $(wildcard ./libfaac/fft.c)
-SRCS += $(wildcard ./libfaac/filtbank.c)
-SRCS += $(wildcard ./libfaac/frame.c)
-SRCS += $(wildcard ./libfaac/huffman.c)
-SRCS += $(wildcard ./libfaac/ltp.c)
-SRCS += $(wildcard ./libfaac/midside.c)
-SRCS += $(wildcard ./libfaac/psychkni.c)
-SRCS += $(wildcard ./libfaac/tns.c)
-SRCS += $(wildcard ./libfaac/util.c)
+TARGET := loto_rtmp_402
 
-RTMP_LIBS=$(REL_LIB)/libmpi.a \
+INC_FLAGS+=-I./include
+RTMP_LIBS:=$(REL_LIB)/libmpi.a \
 	$(REL_LIB)/libhdmi.a \
-	../librtmp/librtmp.a \
-	../zlib-1.2.8/arm/lib/libz.a \
-	../openssl/lib/libssl.a \
-	../openssl/lib/libcrypto.a \
-	# ./lib/libfaac.a \
+
+# librtmp
+INC_FLAGS+=-I../librtmp
+RTMP_LIBS+=../librtmp/librtmp.a
+
+# zlib-1.2.8
+INC_FLAGS+=-I../zlib-1.2.8/arm/include
+RTMP_LIBS+=../zlib-1.2.8/arm/lib/libz.a
+
+# openssl-1.0.1p
+INC_FLAGS+=-I../openssl/include
+RTMP_LIBS+=../openssl/lib/libssl.a
+RTMP_LIBS+=../openssl/lib/libcrypto.a
+
 
 # RTMP_LIBS=$(REL_LIB)/libmpi.a \
 # 	$(REL_LIB)/libhdmi.a \
@@ -41,21 +40,47 @@ RTMP_LIBS=$(REL_LIB)/libmpi.a \
 
 LDLIBSOPTIONS=-L./lib/
 
+CFLAGS += $(INC_FLAGS)
+# CFLAGS += -std=c99
+
 .PHONY : clean all
 # target source
-TARGET := loto_rtmp_402
-OBJS  := $(SRCS:%.c=%.o)
-CFLAGS += $(INC_FLAGS)
 
 all: $(TARGET)
 
-$(TARGET):$(OBJS) $(COMM_OBJ)
-	@$(CXX) $(CFLAGS) -lpthread -lm -o $@ $^  $(RTMP_LIBS) $(AUDIO_LIBA) $(JPEGD_LIBA) ${LDLIBSOPTIONS} -leasyaacencoder -lfdk-aac -s
+$(TARGET):$(C_OBJS) $(COMM_OBJ)
+	@$(CC) $(CFLAGS) -lpthread -lm -o $@ $^  $(RTMP_LIBS) $(AUDIO_LIBA) $(JPEGD_LIBA) ${LDLIBSOPTIONS} -lfdk-aac -s
+
+%.o: %.c
+	@$(CC) $(CFLAGS) -c -o $@ $<
+
+release:
+	@mkdir -p ./bin
+	@cp $(TARGET) ./bin/$(TARGET)-$(BIN_VERSION)
+
+delete_release:
+	@rm -f ./bin/$(TARGET)-$(BIN_VERSION)
+
+rebuild_librtmp:
+	make -C ../librtmp clean
+	make -C ../librtmp
+
+build_with_librtmp: rebuild_librtmp clean all
 
 clean:
 	@rm -f $(TARGET)
-	@rm -f $(OBJS)
+	@rm -f $(C_OBJS)
 	@rm -f $(COMM_OBJ)
+
+echo:
+	@echo $(CFLAGS)
+	@echo
+	@echo $(C_OBJS)
+	@echo
+	@echo $(CC)
+	@echo
+
+
 
 
 # # Hisilicon Hi3516 sample Makefile

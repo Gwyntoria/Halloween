@@ -9,161 +9,153 @@
  ***********************************************************************
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "ConfigParser.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-void delete_char(char str[],char target)
+#define MAX_LINE_LENGTH  1024
+#define MAX_TITLE_LENGTH 32
+
+typedef enum ErrorCodes {
+    SUCCESS = 0,
+    FILE_OPEN_ERROR,
+    FILE_WRITE_ERROR,
+    INVALID_ARGUMENTS,
+    TITLE_NOT_FOUND
+} ErrorCodes;
+
+void DeleteChar(char str[], char target)
 {
-    int i,j;
-    for(i=j=0;str[i]!='\0';i++)
-    {
-        if(str[i]!=target)
-        {
-            str[j++]=str[i];
+    int i, j;
+    for (i = j = 0; str[i] != '\0'; i++) {
+        if (str[i] != target) {
+            str[j++] = str[i];
         }
     }
-    str[j]='\0';
+    str[j] = '\0';
 }
 
-/*
- * 函数名：         GetIniKeyString
- * 入口参数：        title
- *                      配置文件中一组数据的标识
- *                  key
- *                      这组数据中要读出的值的标识
- *                  filename
- *                      要读取的文件路径
- * 返回值：         找到需要查的值则返回正确结果
- *                  否则返回NULL
- */
-char *GetIniKeyString(char *title,char *key,char *filename)
+char* GetConfigKeyValue(const char* title, const char* key, const char* filename)
 {
-    FILE *fp;
-    int  flag = 0;
-    char sTitle[32], *wTmp;
-    static char sLine[1024];
+    FILE*       fp;
+    int         title_state              = 0;
+    char        sTitle[MAX_TITLE_LENGTH] = {0};
+    static char line[MAX_LINE_LENGTH]    = {0}; // 函数的返回的字符串的内存不会被自动释放
+    char* value = NULL;
 
     sprintf(sTitle, "[%s]", title);
-    if(NULL == (fp = fopen(filename, "r"))) {
+    // printf("sTitle = %s\n", sTitle);
+
+    if (NULL == (fp = fopen(filename, "r"))) {
         perror("fopen");
-        return "NULL";
+        return NULL;
     }
 
-    while (NULL != fgets(sLine, 1024, fp)) {
-        // 这是注释行
-        if (0 == strncmp("//", sLine, 2)) continue;
-        if ('#' == sLine[0])              continue;
+    while (NULL != fgets(line, 1024, fp)) {
+        // skip comment line
+        if (0 == strncmp("//", line, 2))
+            continue;
+        if ('#' == line[0])
+            continue;
 
-        wTmp = strchr(sLine, '=');
-        if ((NULL != wTmp) && (1 == flag)) {
-            if (0 == strncmp(key, sLine, wTmp-sLine)) { // 长度依文件读取的为准
-                sLine[strlen(sLine) - 1] = '\0';
+        // find title
+        if (title_state == 0 && strncmp(sTitle, line, strlen(sTitle)) == 0) {
+            title_state = 1;
+            continue;
+        }
+
+        // find the specified key and return the value
+        if (title_state == 1) {
+            value = strchr(line, '=');
+            if (value != NULL && (strncmp(key, line, value - line) == 0)) {
+                // 0b1010 refers to '\n'
+                if (line[strlen(line) - 1] == 0b1010) {
+                    line[strlen(line) - 1] = '\0';
+                } else if (line[strlen(line) - 1] > 0b00011111) {
+                    line[strlen(line)] = '\0';
+                }
                 fclose(fp);
-                return wTmp + 1;
-            }
-        } else {
-            if (0 == strncmp(sTitle, sLine, strlen(sLine) - 1)) { // 长度依文件读取的为准
-                flag = 1; // 找到标题位置
+                return value + 1;
             }
         }
     }
     fclose(fp);
-    return NULL;
+    printf("get title failed!\n");
+    exit(1);
 }
 
-/*
- * 函数名：         GetIniKeyInt
- * 入口参数：        title
- *                      配置文件中一组数据的标识
- *                  key
- *                      这组数据中要读出的值的标识
- *                  filename
- *                      要读取的文件路径
- * 返回值：         找到需要查的值则返回正确结果
- *                  否则返回NULL
- */
-int GetIniKeyInt(char *title,char *key,char *filename)
+int GetIniKeyInt(const char* title, const char* key, const char* filename)
 {
-    char* value = GetIniKeyString(title, key, filename);
-    if (value == NULL)
-        return  0;
-
-    return atoi(value);
+    return atoi(GetConfigKeyValue(title, key, filename));
 }
 
-/*
- * 函数名：         PutIniKeyString
- * 入口参数：        title
- *                      配置文件中一组数据的标识
- *                  key
- *                      这组数据中要读出的值的标识
- *                  val
- *                      更改后的值
- *                  filename
- *                      要读取的文件路径
- * 返回值：         成功返回  0
- *                  否则返回 -1
- */
-int PutIniKeyString(char *title,char *key,char *val,char *filename)
+int PutConfigKeyValue(const char* title, const char* key, const char* val, const char* filename)
 {
-    FILE *fpr, *fpw;
-    int  flag = 0;
-    char sLine[1024], sTitle[32], *wTmp;
-
-    sprintf(sTitle, "[%s]", title);
-    if (NULL == (fpr = fopen(filename, "r")))
-        printf("fopen");// 读取原文件
-    sprintf(sLine, "%s.tmp", filename);
-    if (NULL == (fpw = fopen(sLine,    "w")))
-        printf("fopen");// 写入临时文件
-
-    if (fpr == NULL)
-    {
-        fputs(sTitle, fpw); // 写入临时文件
-        sprintf(sLine, "\n%s=%s\n", key, val);
-        fputs(sLine, fpw);
+    if (!title || !key || !val || !filename) {
+        return INVALID_ARGUMENTS;
     }
-    else
-    {
-        while (NULL != fgets(sLine, 1024, fpr))
-        {
-            if (2 != flag)
-            { // 如果找到要修改的那一行，则不会执行内部的操作
-                wTmp = strchr(sLine, '=');
-                if ((NULL != wTmp) && (1 == flag))
-                {
-                    if (0 == strncmp(key, sLine, wTmp-sLine))
-                    { // 长度依文件读取的为准
-                        flag = 2;// 更改值，方便写入文件
-                        sprintf(wTmp + 1, "%s\n", val);
-                    }
+
+    FILE *fpr, *fpw;
+    int title_state = 0; // 0 - 未找到，1 - 找到但未修改，2 - 找到并已修改
+    char line[MAX_LINE_LENGTH], sTitle[MAX_TITLE_LENGTH];
+    snprintf(sTitle, sizeof(sTitle), "[%s]", title);
+
+    fpr = fopen(filename, "r");
+    if (fpr == NULL) {
+        perror("无法打开文件进行读取");
+        return FILE_OPEN_ERROR;
+    }
+
+    char tmp_filename[MAX_LINE_LENGTH];
+    snprintf(tmp_filename, sizeof(tmp_filename), "%s.tmp", filename);
+    fpw = fopen(tmp_filename, "w");
+    if (fpw == NULL) {
+        fclose(fpr);
+        perror("无法打开文件进行写入");
+        return FILE_WRITE_ERROR;
+    }
+
+    while (fgets(line, sizeof(line), fpr) != NULL) {
+        if (title_state != 2) { // 如果不是已修改的状态，进入匹配查询
+            char* value = strchr(line, '=');
+            if (value != NULL && title_state == 1) {
+                if (strncmp(key, line, value - line) == 0) {
+                    title_state = 2;
+                    fprintf(fpw, "%s=%s\n", key, val);
+                    continue;
                 }
-                else
-                {
-                    if (0 == strncmp(sTitle, sLine, strlen(sLine) - 1))
-                    { // 长度依文件读取的为准
-                        flag = 1; // 找到标题位置
-                    }
+            } else {
+                if (strncmp(sTitle, line, strlen(sTitle)) == 0) {
+                    title_state = 1; // 找到 title
                 }
             }
-            fputs(sLine, fpw); // 写入临时文件
         }
-        fclose(fpr);
+
+        // 将读取到的不需要修改的行写入临时文件
+        fputs(line, fpw);
     }
 
+    if (title_state != 2) {
+        // 添加新的 title 和 键值对 到临时文件中
+        fputs(sTitle, fpw);
+        fprintf(fpw, "\n%s=%s\n", key, val);
+    }
+
+    fclose(fpr);
     fclose(fpw);
 
-    sprintf(sLine, "%s.tmp", filename);
-    return rename(sLine, filename);// 将临时文件更新到原文件
+    if (rename(tmp_filename, filename) != 0) {
+        perror("重命名临时文件出错");
+        return FILE_WRITE_ERROR;
+    }
+
+    return SUCCESS;
 }
 
 /*
- * 函数名：         PutIniKeyString
+ * 函数名：         PutConfigKeyValue
  * 入口参数：        title
  *                      配置文件中一组数据的标识
  *                  key
@@ -175,9 +167,9 @@ int PutIniKeyString(char *title,char *key,char *val,char *filename)
  * 返回值：         成功返回  0
  *                  否则返回 -1
  */
-int PutIniKeyInt(char *title,char *key,int val,char *filename)
+int PutIniKeyInt(const char* title, const char* key, int val, const char* filename)
 {
     char sVal[32];
     sprintf(sVal, "%d", val);
-    return PutIniKeyString(title, key, sVal, filename);
+    return PutConfigKeyValue(title, key, sVal, filename);
 }

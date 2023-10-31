@@ -122,7 +122,7 @@ static uint8_t *get_nal(uint32_t *len, uint8_t **offset, uint8_t *start, uint32_
     return q;
 }
 
-void *prtmp = NULL;
+void *gs_rtmp = NULL;
 
 void* LOTO_VIDEO_AUDIO_RTMP(void *p)
 {
@@ -161,8 +161,8 @@ void* LOTO_VIDEO_AUDIO_RTMP(void *p)
             v_timeCount += 20;
   
             t1 = get_us_timestamp();
-            if (prtmp != NULL)
-			    rtmp_sender_write_avc_frame(prtmp, v_ringinfo.buffer, v_ringinfo.size, v_timeCount, 0);
+            if (gs_rtmp != NULL)
+			    rtmp_sender_write_avc_frame(gs_rtmp, v_ringinfo.buffer, v_ringinfo.size, v_timeCount, 0);
             t2 = get_us_timestamp();
 
             int offset = (int)((t2 - t1)/1000);
@@ -221,12 +221,12 @@ int main(int argc, char *argv[])
     if (read_count > 0)
     {
         prtmp = rtmp_sender_alloc(sz_pushurl); //return handle
-        if(rtmp_sender_start_publish(prtmp, 0, 0)!=0)
+        if(rtmp_sender_start_publish(gs_rtmp, 0, 0)!=0)
         {
             printf("connect %s fail\n", sz_pushurl);
             LOGD ("[%s] connect %s fail\n", log_Time(), sz_pushurl);
-            rtmp_sender_free(prtmp);
-            prtmp = NULL;
+            rtmp_sender_free(gs_rtmp);
+            gs_rtmp = NULL;
             return -1;
         }
 

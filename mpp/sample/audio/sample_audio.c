@@ -23,7 +23,6 @@
 #include "tlv320aic31.h"
 #include "cx26828.h"
 
-#include "EasyAACEncoderAPI.h"
 #include "include/fdk-aac/aacenc_lib.h"
 #include "include/faac.h"
 
