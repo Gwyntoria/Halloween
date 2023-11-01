@@ -668,23 +668,6 @@ void parse_config_file(const char* config_file_path)
 
         /* Get server url */
         char server_url[1024];
-        // LOGI("Waiting for updating server address\n");
-        // while (1) {
-        //     if (gs_server_option != SERVER_NULL) {
-        //         break;
-        //     } else {
-        //         LOGE("Waiting......\n");
-        //         sleep(3);
-        //     }
-        // }
-
-        // if (gs_server_option == SERVER_TEST) {
-        //     strcpy(server_url, GetConfigKeyValue("push", "test_server_url",
-        //     config_file_path));
-        // } else if (gs_server_option == SERVER_OFFI) {
-        //     strcpy(server_url, GetConfigKeyValue("push", "offi_server_url",
-        //     config_file_path));
-        // }
 
         strcpy(server_url, GetConfigKeyValue("push", "server_url", config_file_path));
         strcpy(device_info.server_url, server_url);
@@ -752,7 +735,7 @@ void fill_device_net_info(DeviceInfo* device_info)
 
 #define VER_MAJOR 0
 #define VER_MINOR 2
-#define VER_BUILD 1
+#define VER_BUILD 8
 
 int main(int argc, char* argv[])
 {

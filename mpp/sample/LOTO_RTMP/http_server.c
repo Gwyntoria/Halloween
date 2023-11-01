@@ -40,6 +40,16 @@
     "\r\n"                                     \
     "%s"
 
+typedef struct KeyValuePair {
+    char* key;
+    char* value;
+} KeyValuePair;
+
+static int gs_reboot_switch = 0;
+
+extern time_t     program_start_time;
+extern DeviceInfo device_info;
+
 /**
  * @brief 打印出错误信息并结束程序
  *
@@ -265,10 +275,7 @@ void parse_path_with_params(const char *url, char *path, char *query_string)
     }
 }
 
-typedef struct KeyValuePair {
-    char *key;
-    char *value;
-} KeyValuePair;
+
 
 // KeyValuePair* parse_query_string(char* query_string, int* pairs_num) {
 int parse_query_string(char *query_string, int *pairs_num, KeyValuePair *pairs)
@@ -404,29 +411,59 @@ int deal_query_string(char *query_string, char *content)
                 // }
 
             } else if (strcasecmp(pairs[i].key, "server_url") == 0) {
-                if (strcmp(pairs[i].value, "0") == 0) {
-                    PutConfigKeyValue("push", "server_url", TEST_SERVER_URL, PUSH_CONFIG_FILE_PATH);
+                int server_url_status = -1;
 
-                } else if (strcmp(pairs[i].value, "1") == 0) {
-                    PutConfigKeyValue("push", "server_url", OFFI_SERVER_URL, PUSH_CONFIG_FILE_PATH);
+                if (strcmp(device_info.server_url, TEST_SERVER_URL) == 0) {
+                    server_url_status = 0;
+
+                } else if (strcmp(device_info.server_url, OFFI_SERVER_URL) == 0) {
+                    server_url_status = 1;
 
                 } else {
-                    LOGD("value[%s] of key[%s] is wrong\n", pairs[i].value, pairs[i].key);
-                    sprintf(temp, "value[%s] of key[%s] is wrong\n", pairs[i].value, pairs[i].key);
-                    strcat(content, temp);
-                    temp[0] = '\0';
-                    ret--;
+                    LOGE("server_url read from push.conf is wrong!\n");
                 }
 
-                sprintf(temp, "Set server_url OK\n");
-                strcat(content, temp);
-                temp[0] = '\0';
+                if (strcmp(pairs[i].value, "0") == 0) {
+                    if (server_url_status == 1) {
+                        PutConfigKeyValue("push", "server_url", TEST_SERVER_URL, PUSH_CONFIG_FILE_PATH);
 
+                        LOGI("Set server_url to TEST_SERVER_URL\n");
+                        sprintf(temp, "Set server_url to TEST_SERVER_URL\n");
+                        strcat(content, temp);
+                        temp[0] = '\0';
+
+                        gs_reboot_switch = 1;
+
+                    } else {
+                        LOGI("remain the setting of server_url\n");
+                        sprintf(temp, "remain the setting of server_url\n");
+                        strcat(content, temp);
+                        temp[0] = '\0';
+                    }
+
+                } else if (strcmp(pairs[i].value, "1") == 0) {
+                    if (server_url_status == 0) {
+                        PutConfigKeyValue("push", "server_url", OFFI_SERVER_URL, PUSH_CONFIG_FILE_PATH);
+
+                        LOGI("Set server_url to OFFI_SERVER_URL\n");
+                        sprintf(temp, "Set server_url to OFFI_SERVER_URL\n");
+                        strcat(content, temp);
+                        temp[0] = '\0';
+
+                        gs_reboot_switch = 1;
+
+                    } else {
+                        LOGI("remain the setting of server_url\n");
+                        sprintf(temp, "remain the setting of server_url\n");
+                        strcat(content, temp);
+                        temp[0] = '\0';
+                    }
+                } else {
+                    LOGE("value[%s] of key[%s] is wrong\n", pairs[i].value, pairs[i].key);
+                    ret--;
+                }
             } else {
-                LOGD("key[%s] is wrong\n", pairs[i].key);
-                sprintf(temp, "key[%s] is wrong\n", pairs[i].key);
-                strcat(content, temp);
-                temp[0] = '\0';
+                LOGE("key[%s] is wrong\n", pairs[i].key);
                 ret--;
             }
         }
@@ -559,9 +596,6 @@ int send_plain_response(int client_socket, const char *content)
 
     return 0;
 }
-
-extern time_t     program_start_time;
-extern DeviceInfo device_info;
 
 void get_device_info(char *device_info_content)
 {
@@ -703,16 +737,26 @@ int accept_request(int client)
             return -1;
         }
 
+        if (gs_reboot_switch) {
+            reboot_system();
+            gs_reboot_switch = 0;
+        }
+
     } else if (strcasecmp(path, "/reboot") == 0) {
         char content[1024] = {0};
         sprintf(content, "Restarting\r\n");
+
+        gs_reboot_switch = 1;
 
         if (send_plain_response(client, content) != 0) {
             LOGE("send device_info error\n");
             return -1;
         }
 
-        reboot_system();
+        if (gs_reboot_switch) {
+            reboot_system();
+            gs_reboot_switch = 0;
+        }
 
     } else if ((strcmp(path, "/") == 0) || (strcasecmp(path, "/home") == 0)) {
         char device_info_content[4096] = {0};
