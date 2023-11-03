@@ -27,6 +27,8 @@ extern "C"{
 #include <signal.h>
 
 #include "sample_comm.h"
+#include "common.h"
+#include "../LOTO_RTMP/common.h"
 
 /******************************************************************************
 * function : Set vpss system memory location
@@ -104,7 +106,7 @@ HI_S32 SAMPLE_COMM_VPSS_Start(HI_S32 s32GrpCnt, SIZE_S *pstSize, HI_S32 s32ChnCn
         s32Ret = HI_MPI_VPSS_CreateGrp(VpssGrp, &stGrpAttr);
         if (s32Ret != HI_SUCCESS)
         {
-            SAMPLE_PRT("HI_MPI_VPSS_CreateGrp failed with %#x!\n", s32Ret);
+            LOGE("HI_MPI_VPSS_CreateGrp failed with %#x!\n", s32Ret);
             return HI_FAILURE;
         }
 
@@ -112,7 +114,7 @@ HI_S32 SAMPLE_COMM_VPSS_Start(HI_S32 s32GrpCnt, SIZE_S *pstSize, HI_S32 s32ChnCn
         s32Ret = HI_MPI_VPSS_GetGrpParam(VpssGrp, &stVpssParam);
         if (s32Ret != HI_SUCCESS)
         {
-            SAMPLE_PRT("failed with %#x!\n", s32Ret);
+            LOGE("failed with %#x!\n", s32Ret);
             return HI_FAILURE;
         }
         
@@ -121,7 +123,7 @@ HI_S32 SAMPLE_COMM_VPSS_Start(HI_S32 s32GrpCnt, SIZE_S *pstSize, HI_S32 s32ChnCn
         s32Ret = HI_MPI_VPSS_SetGrpParam(VpssGrp, &stVpssParam);
         if (s32Ret != HI_SUCCESS)
         {
-            SAMPLE_PRT("failed with %#x!\n", s32Ret);
+            LOGE("failed with %#x!\n", s32Ret);
             return HI_FAILURE;
         }
 
@@ -144,14 +146,14 @@ HI_S32 SAMPLE_COMM_VPSS_Start(HI_S32 s32GrpCnt, SIZE_S *pstSize, HI_S32 s32ChnCn
             s32Ret = HI_MPI_VPSS_SetChnAttr(VpssGrp, VpssChn, &stChnAttr);
             if (s32Ret != HI_SUCCESS)
             {
-                SAMPLE_PRT("HI_MPI_VPSS_SetChnAttr failed with %#x\n", s32Ret);
+                LOGE("HI_MPI_VPSS_SetChnAttr failed with %#x\n", s32Ret);
                 return HI_FAILURE;
             }
     
             s32Ret = HI_MPI_VPSS_EnableChn(VpssGrp, VpssChn);
             if (s32Ret != HI_SUCCESS)
             {
-                SAMPLE_PRT("HI_MPI_VPSS_EnableChn failed with %#x\n", s32Ret);
+                LOGE("HI_MPI_VPSS_EnableChn failed with %#x\n", s32Ret);
                 return HI_FAILURE;
             }
         }
@@ -160,7 +162,7 @@ HI_S32 SAMPLE_COMM_VPSS_Start(HI_S32 s32GrpCnt, SIZE_S *pstSize, HI_S32 s32ChnCn
         s32Ret = HI_MPI_VPSS_StartGrp(VpssGrp);
         if (s32Ret != HI_SUCCESS)
         {
-            SAMPLE_PRT("HI_MPI_VPSS_StartGrp failed with %#x\n", s32Ret);
+            LOGE("HI_MPI_VPSS_StartGrp failed with %#x\n", s32Ret);
             return HI_FAILURE;
         }
 

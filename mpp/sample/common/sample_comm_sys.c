@@ -27,6 +27,7 @@ extern "C"{
 #include <signal.h>
 
 #include "sample_comm.h"
+#include "../LOTO_RTMP/common.h"
 
 /******************************************************************************
 * function : get picture size(w*h), according Norm and enPicSize
@@ -187,7 +188,7 @@ HI_S32 SAMPLE_COMM_SYS_MemConfig(HI_VOID)
     MPP_CHN_S stMppChnRGN;
     MPP_CHN_S stMppChnVDEC;
 
-    /*VI,VDEC×î´óÍ¨µÀÊýÎª32*/
+    /*VI,VDECï¿½ï¿½ï¿½Í¨ï¿½ï¿½ï¿½ï¿½Îª32*/
     for(i=0;i<32;i++)
     {
         stMppChnVI.enModId = HI_ID_VIU;
@@ -225,7 +226,7 @@ HI_S32 SAMPLE_COMM_SYS_MemConfig(HI_VOID)
 
     }  
 
-    /*vpss,grp,venc×î´óÍ¨µÀÎª64*/
+    /*vpss,grp,vencï¿½ï¿½ï¿½Í¨ï¿½ï¿½Îª64*/
     for(i=0;i<64;i++)
     {
         stMppChnVPSS.enModId  = HI_ID_VPSS;
@@ -279,7 +280,7 @@ HI_S32 SAMPLE_COMM_SYS_MemConfig(HI_VOID)
     stMppChnRGN.s32DevId = 0;
     stMppChnRGN.s32ChnId = 0;
         
-    /*ÅäÖÃVOÄÚ´æ*/
+    /*ï¿½ï¿½ï¿½ï¿½VOï¿½Ú´ï¿½*/
     stMppChnVO.enModId  = HI_ID_VOU;
     stMppChnVO.s32DevId = 0;
     stMppChnVO.s32ChnId = 0;

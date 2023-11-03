@@ -27,6 +27,7 @@ extern "C"{
 #include <signal.h>
 
 #include "sample_comm.h"
+#include "../LOTO_RTMP/common.h"
 
 VI_DEV_ATTR_S DEV_ATTR_BT656D1_4MUX =
 {
@@ -409,7 +410,8 @@ HI_VOID SAMPLE_COMM_VI_SetMask(VI_DEV ViDev, VI_DEV_ATTR_S *pstDevAttr)
     switch (ViDev % 4)
     {
         case 0:
-            pstDevAttr->au32CompMask[0] = 0x00FF0000;//0xFF000000;
+            pstDevAttr->au32CompMask[0] = 0x00FF0000; // 0xFF000000;
+
             if (VI_MODE_BT1120_STANDARD == pstDevAttr->enIntfMode)
             {
                 pstDevAttr->au32CompMask[1] = 0xFF000000;//0x00FF0000;
@@ -514,7 +516,7 @@ HI_S32 SAMPLE_COMM_VI_Mode2Param(SAMPLE_VI_MODE_E enViMode, SAMPLE_VI_PARAM_S *p
 		case SAMPLE_VI_MODE_1_720P:
             pstViParam->s32ViDevCnt = 1;
             pstViParam->s32ViDevInterval = 1;
-            pstViParam->s32ViChnCnt = 1;
+            pstViParam->s32ViChnCnt = 2;
             pstViParam->s32ViChnInterval = 1;	
 			break;
 		case SAMPLE_VI_MODE_16_Cif:
@@ -928,6 +930,27 @@ HI_S32 SAMPLE_COMM_VI_StartChn(VI_CHN ViChn, RECT_S *pstCapRect, SIZE_S *pstTarS
 		}			
 	}
 
+    if(SAMPLE_VI_MODE_1_720P == enViMode)
+	{
+		if(1 == ViChn)
+		{
+			s32Ret = HI_MPI_VI_ChnUnBind(ViChn);
+		    if (s32Ret != HI_SUCCESS)
+		    {
+		        SAMPLE_PRT("HI_MPI_VI_ChnUnBind failed with %#x!\n", s32Ret);
+		        return HI_FAILURE;
+		    }
+			stChnBindAttr.ViDev = 0;
+			stChnBindAttr.ViWay = 1;
+			s32Ret = HI_MPI_VI_ChnBind(ViChn, &stChnBindAttr);
+		    if (s32Ret != HI_SUCCESS)
+		    {
+		        SAMPLE_PRT("HI_MPI_VI_ChnBind failed with %#x!\n", s32Ret);
+		        return HI_FAILURE;
+		    }			
+		}			
+	}
+
     /* step  5: config & start vicap dev */
     memcpy(&stChnAttr.stCapRect, pstCapRect, sizeof(RECT_S));
     if (SAMPLE_VI_MODE_16_Cif == enViMode)
@@ -1020,17 +1043,16 @@ HI_S32 SAMPLE_COMM_VI_Start(SAMPLE_VI_MODE_E enViMode, VIDEO_NORM_E enNorm)
     }
     
     /*** Start VI Dev ***/
-    for(i=0; i<stViParam.s32ViDevCnt; i++)
-    {
-        ViDev = i * stViParam.s32ViDevInterval;
+    for (i = 0; i < stViParam.s32ViDevCnt; i++) {
+        // ViDev = i * stViParam.s32ViDevInterval;
+        ViDev  = 0;
         s32Ret = SAMPLE_COMM_VI_StartDev(ViDev, enViMode);
-        if (HI_SUCCESS != s32Ret)
-        {
+        if (HI_SUCCESS != s32Ret) {
             SAMPLE_PRT("SAMPLE_COMM_VI_StartDev failed with %#x\n", s32Ret);
             return HI_FAILURE;
         }
     }
-    
+
     /*** Start VI Chn ***/
     for(i=0; i<stViParam.s32ViChnCnt; i++)
     {
@@ -1124,47 +1146,42 @@ HI_S32 SAMPLE_COMM_VI_Stop(SAMPLE_VI_MODE_E enViMode)
 /*****************************************************************************
 * function : Vi chn bind vpss group
 *****************************************************************************/
-HI_S32 SAMPLE_COMM_VI_BindVpss(SAMPLE_VI_MODE_E enViMode)
-{
-    HI_S32 j, s32Ret;
-    VPSS_GRP VpssGrp;
-    MPP_CHN_S stSrcChn;
-    MPP_CHN_S stDestChn;
+HI_S32 SAMPLE_COMM_VI_BindVpss(SAMPLE_VI_MODE_E enViMode) {
+    HI_S32            j, s32Ret;
+    VPSS_GRP          VpssGrp;
+    MPP_CHN_S         stSrcChn;
+    MPP_CHN_S         stDestChn;
     SAMPLE_VI_PARAM_S stViParam;
-    VI_CHN ViChn;
+    VI_CHN            ViChn;
 
     s32Ret = SAMPLE_COMM_VI_Mode2Param(enViMode, &stViParam);
-    if (HI_SUCCESS !=s32Ret)
-    {
-        SAMPLE_PRT("SAMPLE_COMM_VI_Mode2Param failed!\n");
+    if (HI_SUCCESS != s32Ret) {
+        LOGE("SAMPLE_COMM_VI_Mode2Param failed!\n");
         return HI_FAILURE;
     }
-    
+
     VpssGrp = 0;
-    for (j=0; j<stViParam.s32ViChnCnt; j++)
-    {
+    for (j=0; j<stViParam.s32ViChnCnt; j++) {
         ViChn = j * stViParam.s32ViChnInterval;
-        
-        stSrcChn.enModId = HI_ID_VIU;
+
+        stSrcChn.enModId  = HI_ID_VIU;
         stSrcChn.s32DevId = 0;
         stSrcChn.s32ChnId = ViChn;
-    
-        stDestChn.enModId = HI_ID_VPSS;
+
+        stDestChn.enModId  = HI_ID_VPSS;
         stDestChn.s32DevId = VpssGrp;
         stDestChn.s32ChnId = 0;
-    
+
         s32Ret = HI_MPI_SYS_Bind(&stSrcChn, &stDestChn);
-        if (s32Ret != HI_SUCCESS)
-        {
-            SAMPLE_PRT("failed with %#x!\n", s32Ret);
+        if (s32Ret != HI_SUCCESS) {
+            LOGE("failed with %#x!\n", s32Ret);
             return HI_FAILURE;
         }
-        
-        VpssGrp ++;
+
+        VpssGrp++;
     }
     return HI_SUCCESS;
 }
-
 
 /*****************************************************************************
 * function : Vi chn unbind vpss group

@@ -4,7 +4,10 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/mpp/sample/librtmp"
+                "${workspaceFolder}/mpp/sample/librtmp",
+                "${workspaceFolder}/mpp/sample/LOTO_RTMP",
+                "${workspaceFolder}/mpp/sample/openssl",
+                "${workspaceFolder}/mpp/sample/common"
             ],
             "defines": [
                 "_DEBUG",

@@ -28,6 +28,7 @@ extern "C"{
 #include <signal.h>
 
 #include "sample_comm.h"
+#include "../LOTO_RTMP/common.h"
 
 typedef struct hiVDA_OD_PARAM_S
 {

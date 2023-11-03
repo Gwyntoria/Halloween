@@ -16,6 +16,8 @@ extern "C" {
 #endif
 #endif /* End of #ifdef __cplusplus */
 
+#include "Loto_venc.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,6 +34,8 @@ extern "C" {
 
 static pthread_t gs_VencPid;
 static SAMPLE_VENC_GETSTREAM_PARA_S gs_stPara;
+
+static gs_snap_group_status = 0;
 
 extern int is_rtmp_write;
 
@@ -65,7 +69,7 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID *p)
     ******************************************/
     if (s32ChnTotal >= VENC_MAX_CHN_NUM)
     {
-        SAMPLE_PRT("input count invaild\n");
+        LOGE("input count invaild\n");
         return NULL;
     }
     for (i = 0; i < s32ChnTotal; i++)
@@ -75,7 +79,7 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID *p)
         s32Ret = HI_MPI_VENC_GetChnAttr(VencChn, &stVencChnAttr);
         if(s32Ret != HI_SUCCESS)
         {
-            SAMPLE_PRT("HI_MPI_VENC_GetChnAttr chn[%d] failed with %#x!\n", \
+            LOGE("HI_MPI_VENC_GetChnAttr chn[%d] failed with %#x\n", \
                    VencChn, s32Ret);
             return NULL;
         }
@@ -84,7 +88,7 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID *p)
         VencFd[i] = HI_MPI_VENC_GetFd(i);
         if (VencFd[i] < 0)
         {
-            SAMPLE_PRT("HI_MPI_VENC_GetFd failed with %#x!\n", 
+            LOGE("HI_MPI_VENC_GetFd failed with %#x\n", 
                    VencFd[i]);
             return NULL;
         }
@@ -116,16 +120,16 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID *p)
         }
 
         TimeoutVal.tv_sec  = 0;
-        TimeoutVal.tv_usec = 0;
+        TimeoutVal.tv_usec = 1000 * 100;
         s32Ret = select(maxfd + 1, &read_fds, NULL, NULL, &TimeoutVal);
         if (s32Ret < 0)
         {
-            SAMPLE_PRT("select failed!\n");
+            LOGE("select failed!\n");
             break;
         }
         else if (s32Ret == 0)
         {
-            // SAMPLE_PRT("get venc stream time out, exit thread\n");
+            LOGE("get venc stream time out, exit thread\n");
             usleep(500);
             continue;
         }
@@ -142,7 +146,7 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID *p)
                     s32Ret = HI_MPI_VENC_Query(i, &stStat);
                     if (HI_SUCCESS != s32Ret)
                     {
-                        SAMPLE_PRT("HI_MPI_VENC_Query chn[%d] failed with %#x!\n", i, s32Ret);
+                        LOGE("HI_MPI_VENC_Query chn[%d] failed with %#x\n", i, s32Ret);
                         break;
                     }
 
@@ -152,7 +156,7 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID *p)
                     //stStream.pstPack = (VENC_PACK_S*)malloc(sizeof(VENC_PACK_S) * stStat.u32CurPacks);
                     // if (NULL == stStream.pstPack)
                     // {
-                    //     SAMPLE_PRT("malloc stream pack failed!\n");
+                    //     LOGE("malloc stream pack failed!\n");
                     //     break;
                     // }
                     stStream.pstPack = (VENC_PACK_S *)packbuffer;
@@ -167,7 +171,7 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID *p)
                     //     ll_us_sys_timestamp = get_timestamp_us();
                     //     ll_first_timestamp = stStream.pstPack[0].u64PTS;
 
-                    //     // SAMPLE_PRT("[%s] HI_MPI_VENC_GetStream:  ll_us_sys_timestamp = %"PRIu64", ll_first_timestamp = %"PRIu64" \n", log_Time(), ll_us_sys_timestamp, ll_first_timestamp);
+                    //     // LOGE("[%s] HI_MPI_VENC_GetStream:  ll_us_sys_timestamp = %"PRIu64", ll_first_timestamp = %"PRIu64" \n", log_Time(), ll_us_sys_timestamp, ll_first_timestamp);
                     // }
                     // stStream.pstPack[0].u64PTS = ll_us_sys_timestamp+(stStream.pstPack[0].u64PTS-ll_first_timestamp);
 
@@ -182,7 +186,7 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID *p)
                     {
                         //free(stStream.pstPack);
                         stStream.pstPack = NULL;
-                        SAMPLE_PRT("HI_MPI_VENC_GetStream failed with %#x!\n", \
+                        LOGE("HI_MPI_VENC_GetStream failed with %#x\n", \
                                s32Ret);
                         break;
                     }
@@ -192,7 +196,7 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID *p)
                     {
                         //free(stStream.pstPack);
                         stStream.pstPack = NULL;
-                        SAMPLE_PRT("save stream failed!\n");
+                        LOGE("save stream failed!\n");
                         break;
                     }
                     /*******************************************************
@@ -245,6 +249,163 @@ HI_S32 LOTO_COMM_VENC_StartGetStream(HI_S32 s32Cnt, pthread_t* vencPid)
     }
 
     return  nRet;
+}
+
+HI_S32 LOTO_COMM_VENC_CreateSnapGroup(VENC_GRP VencGrp, VENC_CHN VencChn, VIDEO_NORM_E enNorm, SIZE_S* pstSize) {
+    HI_S32                s32Ret;
+    VENC_CHN_ATTR_S       stVencChnAttr;
+    VENC_ATTR_JPEG_S      stJpegAttr;
+
+
+    stVencChnAttr.stVeAttr.enType = PT_JPEG;
+
+    stJpegAttr.u32MaxPicWidth  = pstSize->u32Width;
+    stJpegAttr.u32MaxPicHeight = pstSize->u32Height;
+    stJpegAttr.u32PicWidth     = pstSize->u32Width;
+    stJpegAttr.u32PicHeight    = pstSize->u32Height;
+    stJpegAttr.u32BufSize      = pstSize->u32Width * pstSize->u32Height * 2;
+    stJpegAttr.bByFrame        = HI_TRUE;  /*get stream mode is field mode  or frame mode*/
+    stJpegAttr.bVIField        = HI_FALSE; /*the sign of the VI picture is field or frame?*/
+    stJpegAttr.u32Priority     = 0;        /*channels precedence level*/
+    memcpy(&stVencChnAttr.stVeAttr.stAttrJpeg, &stJpegAttr, sizeof(VENC_ATTR_JPEG_S));
+
+    s32Ret = HI_MPI_VENC_CreateGroup(VencGrp);
+    if (HI_SUCCESS != s32Ret) {
+        LOGE("HI_MPI_VENC_CreateGroup[%d] failed with %#x!\n", VencGrp, s32Ret);
+        return HI_FAILURE;
+    }
+
+    s32Ret = HI_MPI_VENC_CreateChn(VencChn, &stVencChnAttr);
+    if (HI_SUCCESS != s32Ret) {
+        LOGE("HI_MPI_VENC_CreateChn [%d] faild with %#x!\n", VencChn, s32Ret);
+        return s32Ret;
+    }
+
+    s32Ret = HI_MPI_VENC_RegisterChn(VencGrp, VencChn);
+    if (HI_SUCCESS != s32Ret) {
+        LOGE("HI_MPI_VENC_RegisterChn faild with %#x\n", s32Ret);
+        return HI_FAILURE;
+    }
+
+    s32Ret = HI_MPI_VENC_StartRecvPic(VencChn);
+    if (HI_SUCCESS != s32Ret) {
+        LOGE("HI_MPI_VENC_StartRecvPic faild with%#x\n", s32Ret);
+        return HI_FAILURE;
+    }
+
+    gs_snap_group_status = 1;
+
+    return HI_SUCCESS;
+}
+
+HI_S32 LOTO_COMM_VENC_SaveSnap(VENC_STREAM_S* pstStream) {
+    HI_S32 s32Ret;
+
+    char         acFile[128] = {0};
+    FILE*        pFile;
+    VENC_PACK_S* pstData;
+    HI_U32       i;
+
+    sprintf(acFile, SNAP_JPEG_FILE);
+    pFile = fopen(acFile, "wb");
+    if (pFile == NULL) {
+        LOGE("open file err\n");
+        return HI_FAILURE;
+    }
+
+    for (i = 0; i < pstStream->u32PackCount; i++) {
+        pstData = &pstStream->pstPack[i];
+        fwrite(pstData->pu8Addr[0], pstData->u32Len[0], 1, pFile);
+        fwrite(pstData->pu8Addr[1], pstData->u32Len[1], 1, pFile);
+    }
+
+    fclose(pFile);
+
+    return HI_SUCCESS;
+}
+
+HI_S32 LOTO_COMM_VENC_GetSnapJpg() {
+    if (gs_snap_group_status != 1) 
+        return HI_FAILURE;
+
+    HI_S32 s32Ret;
+
+    struct timeval  TimeoutVal;
+    fd_set          read_fds;
+    HI_S32          s32VencFd;
+    VENC_CHN_STAT_S stStat;
+    VENC_STREAM_S   stStream;
+    HI_S32          i;
+
+    VENC_CHN VencChn = 1;
+
+    s32VencFd = HI_MPI_VENC_GetFd(VencChn);
+    if (s32VencFd < 0) {
+        LOGE("HI_MPI_VENC_GetFd faild with %#x\n", s32VencFd);
+        return HI_FAILURE;
+    }
+
+    FD_ZERO(&read_fds);
+    FD_SET(s32VencFd, &read_fds);
+
+    TimeoutVal.tv_sec  = 0;
+    TimeoutVal.tv_usec = 1000 * 100;
+
+    s32Ret = select(s32VencFd + 1, &read_fds, NULL, NULL, &TimeoutVal);
+    if (s32Ret < 0) {
+        LOGE("snap select failed!\n");
+        return HI_FAILURE;
+
+    } else if (0 == s32Ret) {
+        LOGE("snap time out!\n");
+        return HI_FAILURE;
+
+    } else {
+        if (FD_ISSET(s32VencFd, &read_fds)) {
+            s32Ret = HI_MPI_VENC_Query(VencChn, &stStat);
+            if (s32Ret != HI_SUCCESS) {
+                LOGE("HI_MPI_VENC_Query failed with %#x\n", s32Ret);
+                return HI_FAILURE;
+            }
+
+            stStream.pstPack = (VENC_PACK_S*)malloc(sizeof(VENC_PACK_S) * stStat.u32CurPacks);
+            if (NULL == stStream.pstPack) {
+                LOGE("malloc memory failed!\n");
+                return HI_FAILURE;
+            }
+
+            stStream.u32PackCount = stStat.u32CurPacks;
+
+            s32Ret = HI_MPI_VENC_GetStream(VencChn, &stStream, HI_TRUE);
+            if (HI_SUCCESS != s32Ret) {
+                LOGE("HI_MPI_VENC_GetStream failed with %#x\n", s32Ret);
+                free(stStream.pstPack);
+                stStream.pstPack = NULL;
+                return HI_FAILURE;
+            }
+
+            s32Ret = LOTO_COMM_VENC_SaveSnap(&stStream);
+            if (HI_SUCCESS != s32Ret) {
+                LOGE("HI_MPI_VENC_GetStream failed with %#x\n", s32Ret);
+                free(stStream.pstPack);
+                stStream.pstPack = NULL;
+                return HI_FAILURE;
+            }
+
+            s32Ret = HI_MPI_VENC_ReleaseStream(VencChn, &stStream);
+            if (s32Ret) {
+                LOGE("HI_MPI_VENC_ReleaseStream failed with %#x\n", s32Ret);
+                free(stStream.pstPack);
+                stStream.pstPack = NULL;
+                return HI_FAILURE;
+            }
+
+            free(stStream.pstPack);
+            stStream.pstPack = NULL;
+        }
+    }
+
+    return HI_SUCCESS;
 }
 
 #ifdef __cplusplus

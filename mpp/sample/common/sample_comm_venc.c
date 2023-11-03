@@ -110,7 +110,7 @@ HI_S32 SAMPLE_COMM_VENC_BindVpss(VENC_GRP GrpChn,VPSS_GRP VpssGrp,VPSS_CHN VpssC
     s32Ret = HI_MPI_SYS_Bind(&stSrcChn, &stDestChn);
     if (s32Ret != HI_SUCCESS)
     {
-        SAMPLE_PRT("failed with %#x!\n", s32Ret);
+        LOGE("failed with %#x!\n", s32Ret);
         return HI_FAILURE;
     }
 
@@ -310,7 +310,7 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
     s32Ret = SAMPLE_COMM_SYS_GetPicSize(enNorm, enSize, &stPicSize);
      if (HI_SUCCESS != s32Ret)
     {
-        SAMPLE_PRT("Get picture size failed!\n");
+        LOGE("Get picture size failed!\n");
         return HI_FAILURE;
     }
     /******************************************
@@ -319,7 +319,7 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
     s32Ret = HI_MPI_VENC_CreateGroup(VencGrp);
     if (HI_SUCCESS != s32Ret)
     {
-        SAMPLE_PRT("HI_MPI_VENC_CreateGroup[%d] failed with %#x!\n",\
+        LOGE("HI_MPI_VENC_CreateGroup[%d] failed with %#x!\n",\
                  VencGrp, s32Ret);
         return HI_FAILURE;
     }
@@ -519,7 +519,7 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
             }
             else 
             {
-                SAMPLE_PRT("cann't support other mode in this version!\n");
+                LOGE("cann't support other mode in this version!\n");
 
                 return HI_FAILURE;
             }
@@ -542,7 +542,7 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
     s32Ret = HI_MPI_VENC_CreateChn(VencChn, &stVencChnAttr);
     if (HI_SUCCESS != s32Ret)
     {
-        SAMPLE_PRT("HI_MPI_VENC_CreateChn [%d] faild with %#x!\n",\
+        LOGE("HI_MPI_VENC_CreateChn [%d] faild with %#x!\n",\
                 VencChn, s32Ret);
         return s32Ret;
     }
@@ -553,7 +553,7 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
     s32Ret = HI_MPI_VENC_RegisterChn(VencGrp, VencChn);
     if (HI_SUCCESS != s32Ret)
     {
-        SAMPLE_PRT("HI_MPI_VENC_RegisterChn faild with %#x!\n", s32Ret);
+        LOGE("HI_MPI_VENC_RegisterChn faild with %#x!\n", s32Ret);
         return HI_FAILURE;
     }
 
@@ -563,7 +563,7 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
     s32Ret = HI_MPI_VENC_StartRecvPic(VencChn);
     if (HI_SUCCESS != s32Ret)
     {
-        SAMPLE_PRT("HI_MPI_VENC_StartRecvPic faild with%#x!\n", s32Ret);
+        LOGE("HI_MPI_VENC_StartRecvPic faild with%#x!\n", s32Ret);
         return HI_FAILURE;
     }
 
@@ -649,15 +649,15 @@ HI_S32 SAMPLE_COMM_VENC_SnapStart(VENC_GRP VencGrp,VENC_CHN VencChn, SIZE_S *pst
      step 2:  Create Venc Channel
     ******************************************/
     stVencChnAttr.stVeAttr.enType = PT_JPEG;
-    
+
     stJpegAttr.u32MaxPicWidth  = pstSize->u32Width;
     stJpegAttr.u32MaxPicHeight = pstSize->u32Height;
-    stJpegAttr.u32PicWidth  = pstSize->u32Width;
-    stJpegAttr.u32PicHeight = pstSize->u32Height;
-    stJpegAttr.u32BufSize = pstSize->u32Width * pstSize->u32Height * 2;
-    stJpegAttr.bByFrame = HI_TRUE;/*get stream mode is field mode  or frame mode*/
-    stJpegAttr.bVIField = HI_FALSE;/*the sign of the VI picture is field or frame?*/
-    stJpegAttr.u32Priority = 0;/*channels precedence level*/
+    stJpegAttr.u32PicWidth     = pstSize->u32Width;
+    stJpegAttr.u32PicHeight    = pstSize->u32Height;
+    stJpegAttr.u32BufSize      = pstSize->u32Width * pstSize->u32Height * 2;
+    stJpegAttr.bByFrame        = HI_TRUE;  /*get stream mode is field mode  or frame mode*/
+    stJpegAttr.bVIField        = HI_FALSE; /*the sign of the VI picture is field or frame?*/
+    stJpegAttr.u32Priority     = 0;        /*channels precedence level*/
     memcpy(&stVencChnAttr.stVeAttr.stAttrJpeg, &stJpegAttr, sizeof(VENC_ATTR_JPEG_S));
 
     s32Ret = HI_MPI_VENC_CreateChn(VencChn, &stVencChnAttr);

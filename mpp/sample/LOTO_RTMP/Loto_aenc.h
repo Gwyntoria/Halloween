@@ -3,7 +3,8 @@
 
 #include <pthread.h>
 
-#include "sample_comm.h"
+#include "hi_type.h"
+#include "hi_common.h"
 
 #ifdef __cplusplus
 #if __cplusplus

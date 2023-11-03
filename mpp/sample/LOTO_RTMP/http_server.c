@@ -16,8 +16,7 @@
 
 #include "ConfigParser.h"
 #include "common.h"
-// #include "loto_controller.h"
-// #include "loto_cover.h"
+#include "Loto_venc.h"
 
 #define DEBUG_HTTP 0
 
@@ -39,6 +38,12 @@
     "Connection: keep-alive\r\n"               \
     "\r\n"                                     \
     "%s"
+
+#define JPG_RESPONSE_TEMPLATE      \
+    "HTTP/1.1 200 OK\r\n"          \
+    "Content-Type: image/jpeg\r\n" \
+    "Content-Length: %d\r\n"       \
+    "\r\n"                         \
 
 typedef struct KeyValuePair {
     char* key;
@@ -368,7 +373,8 @@ int deal_query_string(char *query_string, char *content)
     // KeyValuePair* pairs = NULL;
     // pairs = parse_query_string(query_string, &pairs_num);
 
-    KeyValuePair pairs[32] = {0};
+    KeyValuePair pairs[32];
+    memset(pairs, 32, sizeof(KeyValuePair));
     parse_query_string(query_string, &pairs_num, pairs);
 
 #if DEBUG_HTTP
@@ -754,9 +760,86 @@ int accept_request(int client)
         }
 
         if (gs_reboot_switch) {
-            reboot_system();
             gs_reboot_switch = 0;
+            reboot_system();
         }
+
+    } else if (strcmp(path, "/1.jpg") == 0) {
+        FILE* jpg_file        = NULL;
+        int   jpg_file_length = 0;
+        int   content_length  = 0;
+
+        char http_response[1024 * 600] = {0};
+        int  http_response_len         = 0;
+
+        int http_header_len = 0;
+
+        char* http_body     = NULL;
+        int   http_body_len = 0;
+
+        if (LOTO_COMM_VENC_GetSnapJpg() == 0) {
+            // sprintf(content, "get snap successfully\r\n");
+
+            jpg_file = fopen(SNAP_JPEG_FILE, "rb");
+            if (jpg_file == NULL) {
+                LOGE("open file [%s] failed\n", SNAP_JPEG_FILE);
+                return -1;
+            }
+
+            fseek(jpg_file, 0, SEEK_END);
+            jpg_file_length = ftell(jpg_file);
+            fseek(jpg_file, 0, SEEK_SET);
+
+#if DEBUG_HTTP
+            LOGD("jpg file len: %d\n", jpg_file_length);
+#endif
+
+            if (jpg_file_length == -1) {
+                LOGE("failed to get jpeg file size");
+                fclose(jpg_file);
+                return -1;
+            }
+// #if DEBUG_HTTP
+            sprintf(http_response, JPG_RESPONSE_TEMPLATE, jpg_file_length);
+// #endif
+
+            LOGD("http header:\n%s\n", http_response);
+
+            http_header_len   = strlen(http_response);
+            http_body         = http_response + http_header_len;
+            http_body_len     = jpg_file_length;
+            http_response_len = http_header_len + http_body_len;
+
+            content_length = fread(http_body, 1, jpg_file_length, jpg_file);
+            fclose(jpg_file);
+
+#if DEBUG_HTTP
+            LOGD("read file len: %d\n", content_length);
+#endif
+
+            if (content_length != jpg_file_length) {
+                LOGE("read jpeg file failed\n");
+                return -1;
+            }
+
+#if DEBUG_HTTP
+            print_data_stream_hex(http_response, 1024);
+#endif
+
+            if (send(client, http_response, http_response_len, 0) < 0) {
+                return -1;
+            }
+
+        } else {
+            LOGE("failed to get snap\r\n");
+            sprintf(http_response, "failed to get snap\r\n");
+
+            if (send_plain_response(client, http_response) != 0) {
+                LOGE("send error\n");
+                return -1;
+            }
+        }
+
 
     } else if ((strcmp(path, "/") == 0) || (strcasecmp(path, "/home") == 0)) {
         char device_info_content[4096] = {0};

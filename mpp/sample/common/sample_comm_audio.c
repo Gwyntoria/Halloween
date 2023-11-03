@@ -22,6 +22,7 @@
 #include "../audio/EasyAACEncoderAPI.h"
 #include "../audio/include/fdk-aac/aacenc_lib.h"
 #include "../audio/include/faac.h"
+#include "../LOTO_RTMP/common.h"
 
 
 #ifdef __cplusplus

@@ -28,6 +28,7 @@ extern "C"{
 #include <signal.h>
 
 #include "sample_comm.h"
+#include "../LOTO_RTMP/common.h"
 
 
 HI_S32 SAMPLE_COMM_VO_GetWH(VO_INTF_SYNC_E enIntfSync, HI_U32 *pu32W,HI_U32 *pu32H, HI_U32 *pu32Frm)

@@ -1,6 +1,6 @@
 VER_MAJOR:=0
-VER_MINOR:=2
-VER_BUILD:=8
+VER_MINOR:=3
+VER_BUILD:=2
 BIN_VERSION:=$(VER_MAJOR).$(VER_MINOR).$(VER_BUILD)
 
 include ../Makefile.param
@@ -75,7 +75,7 @@ clean:
 echo:
 	@echo $(CFLAGS)
 	@echo
-	@echo $(C_OBJS)
+	@echo $(C_OBJS) $(COMM_OBJ)
 	@echo
 	@echo $(CC)
 	@echo

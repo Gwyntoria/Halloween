@@ -42,6 +42,7 @@ extern "C" {
 #include "ringfifo.h"
 #include "WaInit.h"
 #include "http_server.h"
+// #include "loto_osd.h"
 
 #define LOTO_DBG(s32Ret)                                                       \
     do {                                                                       \
@@ -116,20 +117,26 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
     ******************************************/
     memset(&stVbConf, 0, sizeof(VB_CONF_S));
 
-    u32BlkSize             = SAMPLE_COMM_SYS_CalcPicVbBlkSize(gs_enNorm, PIC_HD720, SAMPLE_PIXEL_FORMAT, SAMPLE_SYS_ALIGN_WIDTH);
+    u32BlkSize = SAMPLE_COMM_SYS_CalcPicVbBlkSize(gs_enNorm, PIC_HD720, SAMPLE_PIXEL_FORMAT, SAMPLE_SYS_ALIGN_WIDTH);
+
     stVbConf.u32MaxPoolCnt = 128;
 
     /* video buffer*/
     stVbConf.astCommPool[0].u32BlkSize = u32BlkSize;
-    stVbConf.astCommPool[0].u32BlkCnt  = u32ViChnCnt * 10;
+    stVbConf.astCommPool[0].u32BlkCnt  = u32ViChnCnt * 15;
     memset(stVbConf.astCommPool[0].acMmzName, 0, sizeof(stVbConf.astCommPool[0].acMmzName));
+
+    /* hist buf*/
+    stVbConf.astCommPool[1].u32BlkSize = (196 * 4);
+    stVbConf.astCommPool[1].u32BlkCnt  = u32ViChnCnt * 15;
+    memset(stVbConf.astCommPool[1].acMmzName, 0, sizeof(stVbConf.astCommPool[1].acMmzName));
 
     /******************************************
      step 2: mpp system init.
     ******************************************/
     s32Ret = SAMPLE_COMM_SYS_Init(&stVbConf);
     if (HI_SUCCESS != s32Ret) {
-        SAMPLE_PRT("system init failed with %d!\n", s32Ret);
+        LOGE("system init failed with %d!\n", s32Ret);
         goto END_VENC_1HD_0;
     }
 
@@ -138,7 +145,7 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
     ******************************************/
     s32Ret = SAMPLE_COMM_VI_Start(enViMode, gs_enNorm);
     if (HI_SUCCESS != s32Ret) {
-        SAMPLE_PRT("start vi failed!\n");
+        LOGE("start vi failed!\n");
         goto END_VENC_1HD_0;
     }
 
@@ -147,7 +154,7 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
     ******************************************/
     s32Ret = SAMPLE_COMM_SYS_GetPicSize(gs_enNorm, PIC_HD720, &stSize);
     if (HI_SUCCESS != s32Ret) {
-        SAMPLE_PRT("SAMPLE_COMM_SYS_GetPicSize failed!\n");
+        LOGE("SAMPLE_COMM_SYS_GetPicSize failed!\n");
         goto END_VENC_1HD_0;
     }
 
@@ -163,41 +170,55 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
 
     s32Ret = SAMPLE_COMM_VPSS_Start(s32VpssGrpCnt, &stSize, VPSS_MAX_CHN_NUM, &stGrpAttr);
     if (HI_SUCCESS != s32Ret) {
-        SAMPLE_PRT("Start Vpss failed!\n");
+        LOGE("Start Vpss failed!\n");
         goto END_VENC_1HD_1;
     }
 
     s32Ret = SAMPLE_COMM_VI_BindVpss(enViMode);
     if (HI_SUCCESS != s32Ret) {
-        SAMPLE_PRT("Vi bind Vpss failed!\n");
+        LOGE("Vi bind Vpss failed!\n");
         goto END_VENC_1HD_2;
     }
 
     enRcMode = SAMPLE_RC_VBR;
 
-    /******************************************
-     step 6: start stream venc (big + little)
-    ******************************************/
     s32Ret = SAMPLE_COMM_VENC_Start(VencGrp, VencChn, enPayLoad, gs_enNorm, PIC_HD720, enRcMode);
     if (HI_SUCCESS != s32Ret) {
-        SAMPLE_PRT("Start Venc failed!\n");
+        LOGE("Start Venc failed!\n");
         goto END_VENC_1HD_3;
     }
 
     s32Ret = SAMPLE_COMM_VENC_BindVpss(VencGrp, VpssGrp, VPSS_BSTR_CHN);
     if (HI_SUCCESS != s32Ret) {
-        SAMPLE_PRT("Start Venc failed!\n");
+        LOGE("Start Venc failed!\n");
         goto END_VENC_1HD_3;
     }
 
-    /******************************************
-     step 7: stream venc process -- get stream, then save it to file.
-    ******************************************/
     s32Ret = LOTO_COMM_VENC_StartGetStream(u32ViChnCnt, &venc_Pid);
     if (HI_SUCCESS != s32Ret) {
-        SAMPLE_PRT("Start Venc failed!\n");
+        LOGE("Start Venc failed!\n");
         goto END_VENC_1HD_3;
     }
+
+    VENC_GRP snapVencGrp = 1;
+    VENC_CHN snapVencChn = 1;
+
+    s32Ret = LOTO_COMM_VENC_CreateSnapGroup(snapVencGrp, snapVencChn, gs_enNorm, &stSize);
+    if (HI_SUCCESS != s32Ret) {
+        LOGE("LOTO_COMM_VENC_CreateSnapGroup failed!\n");
+    }
+
+    s32Ret = SAMPLE_COMM_VENC_BindVpss(snapVencGrp, VpssGrp, VPSS_PRE0_CHN);
+    if (HI_SUCCESS != s32Ret) {
+        LOGE("SAMPLE_COMM_VENC_BindVpss failed!\n");
+        return HI_FAILURE;
+    }
+
+    //* snap test
+    // s32Ret = LOTO_COMM_VENC_GetSnapJpg();
+    // if (HI_SUCCESS != s32Ret) {
+    //     LOGE("LOTO_COMM_VENC_GetSnapJpg failed!\n");
+    // }
 
     /* Audio */
     stAioAttr.enSamplerate   = AUDIO_SAMPLE_RATE_48000;
@@ -212,24 +233,19 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
 
     s32AiChnCnt   = stAioAttr.u32ChnCnt;
     s32AencChnCnt = s32AiChnCnt;
-    s32Ret        = SAMPLE_COMM_AUDIO_StartAi(AiDev, s32AiChnCnt, &stAioAttr, HI_FALSE, NULL);
+
+    s32Ret = SAMPLE_COMM_AUDIO_StartAi(AiDev, s32AiChnCnt, &stAioAttr, HI_FALSE, NULL);
     if (s32Ret != HI_SUCCESS) {
         LOTO_DBG(s32Ret);
         return HI_FAILURE;
     }
 
-    /********************************************
-      step 3: start Aenc
-    ********************************************/
     s32Ret = SAMPLE_COMM_AUDIO_StartAenc(s32AencChnCnt, PT_LPCM);
     if (s32Ret != HI_SUCCESS) {
         LOTO_DBG(s32Ret);
         return HI_FAILURE;
     }
 
-    /********************************************
-      step 4: Aenc bind Ai Chn
-    ********************************************/
     for (i = 0; i < s32AencChnCnt; i++) {
         AeChn = i;
         AiChn = i;
@@ -247,14 +263,13 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
         return HI_FAILURE;
     }
 
-    // printf("please press twice ENTER to exit this sample\n");
-    // getchar();
-    // getchar();
+    /* Add OSD */
+    // s32Ret = LOTO_OSD_CreateVideoOsdThread();
+    // if (s32Ret != HI_SUCCESS) {
+    //     LOGE("LOTO_OSD_CreateVideoOsdThread failed! \n");
+    //     return HI_FAILURE;
+    // }
 
-
-    /********************************************
-      step 6: exit the process
-    ********************************************/
     pthread_join(aenc_Pid, 0);
     LOTO_AUDIO_DestoryTrdAenc(AeChn);
 
@@ -290,12 +305,6 @@ END_VENC_1HD_0: // system exit
 
     return HI_SUCCESS;
 }
-
-/**************************************************************************************************
-**
-**
-**
-**************************************************************************************************/
 
 void* LOTO_VIDEO_AUDIO_RTMP(void* arg)
 {
@@ -734,8 +743,8 @@ void fill_device_net_info(DeviceInfo* device_info)
 }
 
 #define VER_MAJOR 0
-#define VER_MINOR 2
-#define VER_BUILD 8
+#define VER_MINOR 3
+#define VER_BUILD 2
 
 int main(int argc, char* argv[])
 {

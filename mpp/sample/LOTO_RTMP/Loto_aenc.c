@@ -16,6 +16,8 @@ extern "C" {
 #endif
 #endif /* End of #ifdef __cplusplus */
 
+#include "Loto_aenc.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -213,7 +215,7 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
         }
     
         TimeoutVal.tv_sec = 0;
-        TimeoutVal.tv_usec = 1000 * 25;
+        TimeoutVal.tv_usec = 1000 * 50;
 
         s32Ret = select(maxfd+1, &read_fds, NULL, NULL, &TimeoutVal);
         if (s32Ret < 0)

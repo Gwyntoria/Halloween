@@ -27,6 +27,7 @@ extern "C"{
 #include <signal.h>
 
 #include "sample_comm.h"
+#include "../LOTO_RTMP/common.h"
 
 /******************************************************************************
 * function : vdec group bind vpss chn
