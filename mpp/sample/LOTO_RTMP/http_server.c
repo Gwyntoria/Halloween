@@ -765,9 +765,10 @@ int accept_request(int client)
         }
 
     } else if (strcmp(path, "/1.jpg") == 0) {
-        FILE* jpg_file        = NULL;
-        int   jpg_file_length = 0;
         int   content_length  = 0;
+
+        char jpg[1024 * 600] = {0};
+        int  jpg_len         = 0;
 
         char http_response[1024 * 600] = {0};
         int  http_response_len         = 0;
@@ -777,51 +778,20 @@ int accept_request(int client)
         char* http_body     = NULL;
         int   http_body_len = 0;
 
-        if (LOTO_COMM_VENC_GetSnapJpg() == 0) {
+        if (LOTO_COMM_VENC_GetSnapJpg(jpg, &jpg_len) == 0) {
             // sprintf(content, "get snap successfully\r\n");
 
-            jpg_file = fopen(SNAP_JPEG_FILE, "rb");
-            if (jpg_file == NULL) {
-                LOGE("open file [%s] failed\n", SNAP_JPEG_FILE);
-                return -1;
-            }
+            sprintf(http_response, JPG_RESPONSE_TEMPLATE, jpg_len);
 
-            fseek(jpg_file, 0, SEEK_END);
-            jpg_file_length = ftell(jpg_file);
-            fseek(jpg_file, 0, SEEK_SET);
-
-#if DEBUG_HTTP
-            LOGD("jpg file len: %d\n", jpg_file_length);
-#endif
-
-            if (jpg_file_length == -1) {
-                LOGE("failed to get jpeg file size");
-                fclose(jpg_file);
-                return -1;
-            }
-// #if DEBUG_HTTP
-            sprintf(http_response, JPG_RESPONSE_TEMPLATE, jpg_file_length);
-// #endif
-
-            LOGD("jpg_file_length: %d\n", jpg_file_length);
+            // LOGD("jpg_len: %d\n", jpg_len);
             // LOGD("http header:\n%s\n", http_response);
 
             http_header_len   = strlen(http_response);
             http_body         = http_response + http_header_len;
-            http_body_len     = jpg_file_length;
+            http_body_len     = jpg_len;
             http_response_len = http_header_len + http_body_len;
 
-            content_length = fread(http_body, 1, jpg_file_length, jpg_file);
-            fclose(jpg_file);
-
-#if DEBUG_HTTP
-            LOGD("read file len: %d\n", content_length);
-#endif
-
-            if (content_length != jpg_file_length) {
-                LOGE("read jpeg file failed\n");
-                return -1;
-            }
+            memccpy(http_body, jpg, 1, jpg_len);
 
 #if DEBUG_HTTP
             print_data_stream_hex(http_response, 1024);

@@ -17,8 +17,8 @@ extern "C" {
 
 HI_S32 LOTO_COMM_VENC_StartGetStream(HI_S32 s32Cnt, pthread_t* vencPid);
 
-HI_S32 LOTO_COMM_VENC_CreateSnapGroup(VENC_GRP VencGrp, VENC_CHN VencChn, VIDEO_NORM_E enNorm, SIZE_S *pstSize);
-HI_S32 LOTO_COMM_VENC_GetSnapJpg();
+HI_S32 LOTO_COMM_VENC_CreateSnapGroup(VENC_GRP VencGrp, VENC_CHN VencChn, VIDEO_NORM_E enNorm, SIZE_S* pstSize);
+HI_S32 LOTO_COMM_VENC_GetSnapJpg(char* jpg, int* jpg_len);
 
 #ifdef __cplusplus
 #if __cplusplus

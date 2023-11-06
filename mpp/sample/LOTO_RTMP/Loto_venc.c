@@ -298,35 +298,47 @@ HI_S32 LOTO_COMM_VENC_CreateSnapGroup(VENC_GRP VencGrp, VENC_CHN VencChn, VIDEO_
     return HI_SUCCESS;
 }
 
-HI_S32 LOTO_COMM_VENC_SaveSnap(VENC_STREAM_S* pstStream) {
+HI_S32 LOTO_COMM_VENC_SaveSnap(VENC_STREAM_S* pstStream, char* jpg, int* jpg_len) {
     HI_S32 s32Ret;
 
-    char         acFile[128] = {0};
-    FILE*        pFile;
-    VENC_PACK_S* pstData;
+    // char         acFile[128] = {0};
+    // FILE*        pFile;
+
+    // sprintf(acFile, SNAP_JPEG_FILE);
+    // pFile = fopen(acFile, "wb");
+    // if (pFile == NULL) {
+    //     LOGE("open file err\n");
+    //     return HI_FAILURE;
+    // }
+
     HI_U32       i;
-
-    sprintf(acFile, SNAP_JPEG_FILE);
-    pFile = fopen(acFile, "wb");
-    if (pFile == NULL) {
-        LOGE("open file err\n");
-        return HI_FAILURE;
-    }
-
+    VENC_PACK_S* pstData;
+    char*        buffer_index = jpg;
+    
     for (i = 0; i < pstStream->u32PackCount; i++) {
         pstData = &pstStream->pstPack[i];
-        fwrite(pstData->pu8Addr[0], pstData->u32Len[0], 1, pFile);
-        fwrite(pstData->pu8Addr[1], pstData->u32Len[1], 1, pFile);
+        // fwrite(pstData->pu8Addr[0], pstData->u32Len[0], 1, pFile);
+        // fwrite(pstData->pu8Addr[1], pstData->u32Len[1], 1, pFile);
+
+        memcpy(buffer_index, pstData->pu8Addr[0], pstData->u32Len[0]);
+        buffer_index += pstData->u32Len[0];
+        *jpg_len += pstData->u32Len[0];
+
+        memcpy(buffer_index, pstData->pu8Addr[1], pstData->u32Len[1]);
+        buffer_index += pstData->u32Len[1];
+        *jpg_len += pstData->u32Len[1];
     }
 
-    fclose(pFile);
+    // fclose(pFile);
 
     return HI_SUCCESS;
 }
 
-HI_S32 LOTO_COMM_VENC_GetSnapJpg() {
-    if (gs_snap_group_status != 1) 
+HI_S32 LOTO_COMM_VENC_GetSnapJpg(char* jpg, int* jpg_len) {
+    if (gs_snap_group_status != 1) {
+        LOGE("snap venc group has not yet been created!\n");
         return HI_FAILURE;
+    }
 
     HI_S32 s32Ret;
 
@@ -384,7 +396,7 @@ HI_S32 LOTO_COMM_VENC_GetSnapJpg() {
                 return HI_FAILURE;
             }
 
-            s32Ret = LOTO_COMM_VENC_SaveSnap(&stStream);
+            s32Ret = LOTO_COMM_VENC_SaveSnap(&stStream, jpg, jpg_len);
             if (HI_SUCCESS != s32Ret) {
                 LOGE("HI_MPI_VENC_GetStream failed with %#x\n", s32Ret);
                 free(stStream.pstPack);
