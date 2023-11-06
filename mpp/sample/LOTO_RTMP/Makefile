@@ -57,6 +57,7 @@ $(TARGET):$(C_OBJS) $(COMM_OBJ)
 release:
 	@mkdir -p ./bin
 	@cp $(TARGET) ./bin/$(TARGET)-$(BIN_VERSION)
+	@cp $(TARGET) ../../../rtmp_pack/kit/root/WaController/
 
 delete_release:
 	@rm -f ./bin/$(TARGET)-$(BIN_VERSION)
