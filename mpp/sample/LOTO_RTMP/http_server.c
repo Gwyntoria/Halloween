@@ -701,7 +701,7 @@ int accept_request(int client)
     // 获取一行HTTP请求报文
     numchars = get_request_line(client, buf, sizeof(buf));
 
-    LOGD("request_line: %s\n", buf);
+    // LOGD("request_line: %s\n", buf);
 
     parse_request_line(buf, numchars, method, url, version);
 
