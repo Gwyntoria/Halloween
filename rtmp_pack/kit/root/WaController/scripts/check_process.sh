@@ -1,7 +1,7 @@
 #!/bin/sh
 # supervisor process
 
-process_name=loto_rtmp
+process_name=loto_rtmp_402
 # if [ -z $process_name ]; then
 #     echo "Input parameter is empty."
 #     return 0

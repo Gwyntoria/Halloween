@@ -1,3 +1,5 @@
 *.o
 
 mpp/sample/LOTO_RTMP/loto_rtmp_402
+
+rtmp_pack.tgz

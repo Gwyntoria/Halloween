@@ -81,8 +81,8 @@ sysctl -w net.ipv4.tcp_wmem="4096 16384 2080768"
 ifconfig lo up
 
 echo "########## Run RTMP App #################"
-/root/WaController/loto_rtmp
+/root/WaController/loto_rtmp_402
 
-sleep 20
+sleep 30
 
 reboot
