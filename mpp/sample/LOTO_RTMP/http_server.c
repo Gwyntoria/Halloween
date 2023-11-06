@@ -803,7 +803,8 @@ int accept_request(int client)
             sprintf(http_response, JPG_RESPONSE_TEMPLATE, jpg_file_length);
 // #endif
 
-            LOGD("http header:\n%s\n", http_response);
+            LOGD("jpg_file_length: %d\n", jpg_file_length);
+            // LOGD("http header:\n%s\n", http_response);
 
             http_header_len   = strlen(http_response);
             http_body         = http_response + http_header_len;
