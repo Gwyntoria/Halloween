@@ -324,6 +324,25 @@ void* LOTO_VIDEO_AUDIO_RTMP(void* arg)
     int            v_ringbuflen = 0;
 
     while (1) {
+        if (!rtmp_sender_isOK(gs_rtmp)) {
+            LOGI("Rebuild rtmp_sender\n");
+
+            if (gs_rtmp != NULL) {
+                rtmp_sender_stop_publish(gs_rtmp);
+                rtmp_sender_free(gs_rtmp);
+                gs_rtmp = NULL;
+            }
+
+            usleep(1000 * 100);
+            gs_rtmp = rtmp_sender_alloc(gs_push_url_buf);
+            if (rtmp_sender_start_publish(gs_rtmp, 0, 0) != 0) {
+                LOGE("connect %s fail \n", gs_push_url_buf);
+                rtmp_sender_stop_publish(gs_rtmp);
+                rtmp_sender_free(gs_rtmp);
+                gs_rtmp = NULL;
+            }
+        }
+
         // 判断是否可进行推流
         if (a_writed == true && gs_audio_state == HI_TRUE) {
             a_ringbuflen = ringget_audio(&a_ringinfo);
@@ -744,7 +763,7 @@ void fill_device_net_info(DeviceInfo* device_info)
 
 #define VER_MAJOR 0
 #define VER_MINOR 3
-#define VER_BUILD 4
+#define VER_BUILD 5
 
 int main(int argc, char* argv[])
 {
