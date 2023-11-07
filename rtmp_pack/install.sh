@@ -6,11 +6,24 @@ WORK_DIR=/root/WaController
 KIT_DIR=$(pwd)
 # echo "KIT_DIR=$KIT_DIR"
 
-KIT_WORK_DIR=$KIT_DIR/root/WaController
-KIT_CONF_DIR=$KIT_DIR/etc
+KIT_CONF_DIR=$KIT_DIR/kit/etc
+KIT_KO_DIR=$KIT_DIR/kit/ko
+KIT_WORK_DIR=$KIT_DIR/kit/root/WaController
+
+echo "===== 0. ko folder ====="
+cp /etc/init.d/rcS /etc/init.d/rcS_back
+
+if [ -d "/ko" ]; then
+    echo ".ko files exist"
+    mv $KIT_KO_DIR/* /ko/
+else
+    mv /tmp/ko/ /
+    mv $KIT_KO_DIR/* /ko/
+fi
 
 echo "===== 1. work folder ====="
-mv $KIT_WORK_DIR/$APP $WORK_DIR
+mkdir $WORK_DIR
+mv $KIT_WORK_DIR/$APP $WORK_DIR/
 chmod 777 $WORK_DIR/$APP
 mv $KIT_WORK_DIR/push.conf $WORK_DIR
 mv $KIT_WORK_DIR/update.sh $WORK_DIR
@@ -40,7 +53,3 @@ chmod 777 /etc/init.d/*
 rm $KIT_CONF_DIR/init.d/ -rf
 
 echo "===== install complete ====="
-echo "Please modify some essential files"
-echo "1. rcS:           the value of argument 'osmem' of program 'load3516dv300'"
-echo "2. loto_conf.sh:  IP address and so on"
-echo "3. push.conf:   device_num, push_url, requested_url, profile and so on"

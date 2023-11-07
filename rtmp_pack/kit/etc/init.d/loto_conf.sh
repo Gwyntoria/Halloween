@@ -4,6 +4,8 @@ echo "########## Network Configuring ##########"
 ifconfig eth0 10.0.0.200 netmask 255.255.252.0
 route add default gw 10.0.1.1
 
+mount -t ramfs /dev/mem /tmp
+
 telnetd &
 
 chmod 777 /ko/extdrv/*
