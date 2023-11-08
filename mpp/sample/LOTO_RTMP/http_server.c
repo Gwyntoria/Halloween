@@ -489,12 +489,15 @@ void send_header(int client, const char *content_type, int content_length)
     char header[1024];
     sprintf(header,
             "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/%s\r\n"
+            "Content-Type: %s\r\n"
             "Content-Length: %d\r\n"
             "\r\n",
             content_type, content_length);
 
-    send(client, header, strlen(header), 0);
+    // int len = send(client, header, strlen(header), 0);
+
+    // printf("\nheader:\n%s\n", header);
+    // printf("len = %d, header_len = %ld\n", len, strlen(header));
 }
 
 // 函数用于读取HTML文件的内容
@@ -684,13 +687,53 @@ void get_device_info(char *device_info_content)
     // write_html_file(device_info_html, DEVICE_FILE_PATH);
 }
 
+void handle_request(int client_socket, char* buf, int buf_size, int* header_size) {
+    ssize_t bytes_received;
+    char*   request_header = NULL;
+
+    while ((bytes_received = recv(client_socket, buf, buf_size, 0)) > 0) {
+        // Append the received data to the request header
+        char* new_header = (char*)realloc(request_header, *header_size + bytes_received + 1);
+        if (new_header == NULL) {
+            fprintf(stderr, "Memory allocation error\n");
+            break;
+        }
+
+        request_header = new_header;
+        memcpy(request_header + *header_size, buf, bytes_received);
+        *header_size += bytes_received;
+        request_header[*header_size] = '\0';
+
+        // Check if we have received the entire request header
+        if (strstr(request_header, "\r\n\r\n") != NULL) {
+            break;
+        }
+    }
+
+    if (bytes_received <= 0) {
+        fprintf(stderr, "Failed to read request\n");
+        close(client_socket);
+        free(request_header);
+        return;
+    }
+
+    // Print the request header
+    // printf("Received Request Header:\n%s\n", request_header);
+
+    memset(buf, 0, buf_size);
+    memcpy(buf, request_header, bytes_received);
+
+    // Clean up and close the client socket
+    free(request_header);
+}
+
 // void* accept_request(void* pclient) {
 int accept_request(int client)
 {
     // int client = *(int*)pclient;
 
-    int  numchars;
-    char buf[1024] = {0};
+    int  header_size = 0;
+    char buf[1024]   = {0};
 
     char method[256]        = {0};
     char url[256]           = {0};
@@ -699,11 +742,12 @@ int accept_request(int client)
     char query_string[1024] = {0};
 
     // 获取一行HTTP请求报文
-    numchars = get_request_line(client, buf, sizeof(buf));
+    header_size = get_request_line(client, buf, sizeof(buf));
+    // handle_request(client, buf, sizeof(buf), &header_size);
 
-    // LOGD("request_line: %s\n", buf);
+    LOGD("request_line: %s\n", buf);
 
-    parse_request_line(buf, numchars, method, url, version);
+    parse_request_line(buf, header_size, method, url, version);
 
     // 暂时只支持get方法
     // if (strcasecmp(method, "GET")) {
@@ -744,13 +788,14 @@ int accept_request(int client)
         }
 
         if (gs_reboot_switch) {
-            reboot_system();
             gs_reboot_switch = 0;
+            LOGI("start rebooting\n");
+            reboot_system();
         }
 
     } else if (strcasecmp(path, "/reboot") == 0) {
         char content[1024] = {0};
-        sprintf(content, "Restarting\r\n");
+        sprintf(content, "Start rebooting\r\n");
 
         gs_reboot_switch = 1;
 
@@ -761,51 +806,45 @@ int accept_request(int client)
 
         if (gs_reboot_switch) {
             gs_reboot_switch = 0;
+            LOGI("Start rebooting\n");
             reboot_system();
         }
 
     } else if (strcmp(path, "/1.jpg") == 0) {
-        int   content_length  = 0;
+        char jpg_buf[1024 * 600] = {0};
+        int  jpg_size            = 0;
 
-        char jpg[1024 * 600] = {0};
-        int  jpg_len         = 0;
+        if (LOTO_COMM_VENC_GetSnapJpg(jpg_buf, &jpg_size) == 0) {
+            LOGD("jpg_size: %d\n", jpg_size);
 
-        char http_response[1024 * 600] = {0};
-        int  http_response_len         = 0;
+            send_header(client, "image/jpeg", jpg_size);
 
-        int http_header_len = 0;
+            size_t total_len = 0;
+            while (total_len < jpg_size) {
+                char   buf[4096] = {0};
+                size_t len       = (total_len + sizeof(buf) <= jpg_size) ? sizeof(buf) : (jpg_size - total_len);
+                memcpy(buf, jpg_buf + total_len, len);
 
-        char* http_body     = NULL;
-        int   http_body_len = 0;
+                ssize_t send_len = send(client, buf, len, 0);
+                if (send_len < 0) {
+                    LOGD("send jpg error\n");
+                    break;
+                }
+                usleep(20);
+                total_len += send_len;
 
-        if (LOTO_COMM_VENC_GetSnapJpg(jpg, &jpg_len) == 0) {
-            // sprintf(content, "get snap successfully\r\n");
-
-            sprintf(http_response, JPG_RESPONSE_TEMPLATE, jpg_len);
-
-            // LOGD("jpg_len: %d\n", jpg_len);
-            // LOGD("http header:\n%s\n", http_response);
-
-            http_header_len   = strlen(http_response);
-            http_body         = http_response + http_header_len;
-            http_body_len     = jpg_len;
-            http_response_len = http_header_len + http_body_len;
-
-            memccpy(http_body, jpg, 1, jpg_len);
-
-#if DEBUG_HTTP
-            print_data_stream_hex(http_response, 1024);
-#endif
-
-            if (send(client, http_response, http_response_len, 0) < 0) {
-                return -1;
+                // LOGD("total_len: %ld, send_len: %ld\n", total_len, send_len);
             }
 
-        } else {
-            LOGE("failed to get snap\r\n");
-            sprintf(http_response, "failed to get snap\r\n");
+            LOGD("total_len: %lu\n", total_len);
 
-            if (send_plain_response(client, http_response) != 0) {
+        } else {
+            char response_content[1024] = {0};
+
+            LOGE("failed to get snap\r\n");
+            sprintf(response_content, "failed to get snap\r\n");
+
+            if (send_plain_response(client, response_content) != 0) {
                 LOGE("send error\n");
                 return -1;
             }
@@ -835,17 +874,25 @@ int accept_request(int client)
 // socket initial: socket() ---> bind() ---> listen()
 int startup(uint16_t *port)
 {
-    int                httpd = 0;
-    struct sockaddr_in name;
+    int httpd = 0;
 
     httpd = socket(AF_INET, SOCK_STREAM, 0);
     if (httpd == -1)
         error_die("socket");
 
+    int opt = -1;
+
+    int ret = setsockopt(httpd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    if (-1 == ret) {
+        perror("setsockopt");
+        return -1;
+    }
+
+    struct sockaddr_in name;
     memset(&name, 0, sizeof(name));
     name.sin_family      = AF_INET;
-    name.sin_addr.s_addr = htonl(INADDR_ANY);
     name.sin_port        = htons(*port);
+    name.sin_addr.s_addr = INADDR_ANY;
 
     if (bind(httpd, (struct sockaddr *)&name, sizeof(name)) < 0) {
         close(httpd);
