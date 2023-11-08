@@ -727,10 +727,10 @@ void handle_request(int client_socket, char* buf, int buf_size, int* header_size
     free(request_header);
 }
 
-// void* accept_request(void* pclient) {
-int accept_request(int client)
+// int accept_request(int client)
+void* accept_request(void* pclient)
 {
-    // int client = *(int*)pclient;
+    int client = *(int*)pclient;
 
     int  header_size = 0;
     char buf[1024]   = {0};
@@ -865,8 +865,8 @@ int accept_request(int client)
         not_found(client);
     }
 
-    // close(client);
-    // pthread_detach(pthread_self());
+    close(client);
+    pthread_detach(pthread_self());
 
     return 0;
 }
@@ -924,7 +924,6 @@ void *http_server(void *arg)
     int                client_sock = -1;
     struct sockaddr_in client_name;
     socklen_t          client_name_len = sizeof(client_name);
-    // pthread_t          new_thread;
 
     server_sock = startup(&port); // 服务器端监听套接字设置
     LOGI("http running on port %d\n", port);
@@ -938,12 +937,13 @@ void *http_server(void *arg)
         }
 
         /* accept_request(client_sock); */
-        // if (pthread_create(&new_thread, NULL, accept_request, (void*)&client_sock) != 0)
-        //     perror("accept_request");
-        // usleep(10);
+        pthread_t request_id;
+        if (pthread_create(&request_id, NULL, accept_request, (void*)&client_sock) != 0)
+            error_die("accept_request");
+        usleep(10);
 
-        accept_request(client_sock);
-        close(client_sock);
+        // accept_request(client_sock);
+        // close(client_sock);
         // LOGI("HTTP client disconnected.\n");
     }
 
