@@ -822,7 +822,9 @@ void* accept_request(void* pclient)
             size_t total_len = 0;
             while (total_len < jpg_size) {
                 char   buf[4096] = {0};
-                size_t len       = (total_len + sizeof(buf) <= jpg_size) ? sizeof(buf) : (jpg_size - total_len);
+                size_t len       =  0;
+
+                len = (total_len + sizeof(buf) <= jpg_size) ? sizeof(buf) : (jpg_size - total_len);
                 memcpy(buf, jpg_buf + total_len, len);
 
                 ssize_t send_len = send(client, buf, len, 0);
@@ -830,7 +832,7 @@ void* accept_request(void* pclient)
                     LOGD("send jpg error\n");
                     break;
                 }
-                usleep(20);
+                // usleep(20);
                 total_len += send_len;
 
                 // LOGD("total_len: %ld, send_len: %ld\n", total_len, send_len);
@@ -865,6 +867,7 @@ void* accept_request(void* pclient)
         not_found(client);
     }
 
+    sleep(2);
     close(client);
     pthread_detach(pthread_self());
 
@@ -888,13 +891,17 @@ int startup(uint16_t *port)
         return -1;
     }
 
-    struct sockaddr_in name;
-    memset(&name, 0, sizeof(name));
-    name.sin_family      = AF_INET;
-    name.sin_port        = htons(*port);
-    name.sin_addr.s_addr = INADDR_ANY;
+    // // 设置Socket为非阻塞模式
+    // int flags = fcntl(httpd, F_GETFL, 0);
+    // fcntl(httpd, F_SETFL, flags | O_NONBLOCK);
 
-    if (bind(httpd, (struct sockaddr *)&name, sizeof(name)) < 0) {
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family      = AF_INET;
+    server_addr.sin_port        = htons(*port);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(httpd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         close(httpd);
         error_die("bind");
     }
@@ -902,10 +909,10 @@ int startup(uint16_t *port)
     if (*port == 0) /* Check if the incoming port number is 0.
                        If it is 0, the port needs to be dynamically allocated */
     {
-        socklen_t namelen = sizeof(name);
-        if (getsockname(httpd, (struct sockaddr *)&name, &namelen) == -1)
+        socklen_t namelen = sizeof(server_addr);
+        if (getsockname(httpd, (struct sockaddr *)&server_addr, &namelen) == -1)
             error_die("getsockname");
-        *port = ntohs(name.sin_port);
+        *port = ntohs(server_addr.sin_port);
     }
 
     if (listen(httpd, MAX_PENDING) < 0) {
@@ -930,17 +937,22 @@ void *http_server(void *arg)
 
     while (1) {
         client_sock = accept(server_sock, (struct sockaddr *)&client_name, &client_name_len);
-        if (client_sock == -1) {
-            error_die("accept");
-        } else {
-            // LOGI("HTTP client connected.\n");
-        }
+        // if (client_sock == -1) {
+        //     error_die("accept");
+        // } else {
+        //     // LOGI("HTTP client connected.\n");
+        // }
 
         /* accept_request(client_sock); */
-        pthread_t request_id;
-        if (pthread_create(&request_id, NULL, accept_request, (void*)&client_sock) != 0)
-            error_die("accept_request");
-        usleep(10);
+        if (client_sock > 0) {
+            pthread_t request_id;
+            if (pthread_create(&request_id, NULL, accept_request, (void*)&client_sock) != 0)
+                error_die("accept_request");
+            usleep(10);
+
+        } else {
+            error_die("accept");
+        }
 
         // accept_request(client_sock);
         // close(client_sock);
