@@ -68,6 +68,8 @@ uint32_t start_time    = 0;
 pthread_t  vid = 0, aid = 0;
 static int isopen = 1;
 
+int g_framerate = 0;
+
 static void* gs_rtmp     = NULL;
 static char  APP_VERSION[16];
 static char  gs_push_url_buf[1024] = {0};
@@ -753,6 +755,8 @@ void parse_config_file(const char* config_file_path)
     }
 
     gs_push_algorithm = GetIniKeyInt("push", "push_algo", config_file_path);
+
+    g_framerate = GetIniKeyInt("push", "framerate", config_file_path);
 }
 
 void fill_device_net_info(DeviceInfo* device_info)
@@ -762,8 +766,8 @@ void fill_device_net_info(DeviceInfo* device_info)
 }
 
 #define VER_MAJOR 0
-#define VER_MINOR 3
-#define VER_BUILD 11
+#define VER_MINOR 4
+#define VER_BUILD 0
 
 int main(int argc, char* argv[])
 {
@@ -790,7 +794,7 @@ int main(int argc, char* argv[])
     s32Ret = get_net_time();
     if (s32Ret != HI_SUCCESS) {
         LOGE("Time sync failed\n");
-        exit(1);
+        // exit(1);
     }
 
     /* Gets the program startup time */

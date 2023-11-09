@@ -290,6 +290,8 @@ HI_S32 SAMPLE_COMM_VENC_SaveStream(PAYLOAD_TYPE_E enType,FILE *pFd, VENC_STREAM_
     return s32Ret;
 }
 
+extern int g_framerate;
+
 /******************************************************************************
 * funciton : Start venc stream mode (h264, mjpeg)
 * note      : rate control parameter need adjust, according your case.
@@ -332,6 +334,7 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
     {
         case PT_H264:
         {
+            LOGD("video encoder: h264\n");
             stH264Attr.u32MaxPicWidth = stPicSize.u32Width;
             stH264Attr.u32MaxPicHeight = stPicSize.u32Height;
             stH264Attr.u32PicWidth = stPicSize.u32Width;/*the picture width*/
@@ -347,11 +350,13 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
 
             if(SAMPLE_RC_CBR == enRcMode)
             {
+                LOGD("RcMode: CBR\n");
                 stVencChnAttr.stRcAttr.enRcMode = VENC_RC_MODE_H264CBR;
                 stH264Cbr.u32Gop            = 30;//(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
                 stH264Cbr.u32StatTime       = 1; /* stream rate statics time(s) */
                 stH264Cbr.u32ViFrmRate      = 60;//(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;/* input (vi) frame rate */
-                stH264Cbr.fr32TargetFrmRate = 50;//(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;/* target frame rate */
+                stH264Cbr.fr32TargetFrmRate = g_framerate;//(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;/* target frame rate */
+                LOGD("Target Framerate: %d\n", stH264Cbr.fr32TargetFrmRate);
                 switch (enSize)
                 {
                   case PIC_QCIF:
@@ -386,18 +391,20 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
                 stVencChnAttr.stRcAttr.enRcMode = VENC_RC_MODE_H264FIXQP;
                 stH264FixQp.u32Gop = (VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
                 stH264FixQp.u32ViFrmRate = (VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
-                stH264FixQp.fr32TargetFrmRate = (VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
+                stH264FixQp.fr32TargetFrmRate = g_framerate; // (VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
                 stH264FixQp.u32IQp = 20;
                 stH264FixQp.u32PQp = 23;
                 memcpy(&stVencChnAttr.stRcAttr.stAttrH264FixQp, &stH264FixQp,sizeof(VENC_ATTR_H264_FIXQP_S));
             }
             else if (SAMPLE_RC_VBR == enRcMode) 
             {
+                LOGD("RcMode: VBR\n");
                 stVencChnAttr.stRcAttr.enRcMode = VENC_RC_MODE_H264VBR;
                 stH264Vbr.u32Gop = 30;//(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
                 stH264Vbr.u32StatTime = 1;
                 stH264Vbr.u32ViFrmRate = 60;//(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
-                stH264Vbr.fr32TargetFrmRate = 50;//(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
+                stH264Vbr.fr32TargetFrmRate = g_framerate; //(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
+                LOGD("Target Framerate: %d\n", stH264Vbr.fr32TargetFrmRate);
                 stH264Vbr.u32MinQp = 10;
                 stH264Vbr.u32MaxQp = 40;
                 switch (enSize)
