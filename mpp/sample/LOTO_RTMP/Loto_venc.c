@@ -35,7 +35,7 @@ extern "C" {
 static pthread_t gs_VencPid;
 static SAMPLE_VENC_GETSTREAM_PARA_S gs_stPara;
 
-static gs_snap_group_status = 0;
+int gs_snap_group_status = 0;
 
 extern int is_rtmp_write;
 
@@ -299,8 +299,6 @@ HI_S32 LOTO_COMM_VENC_CreateSnapGroup(VENC_GRP VencGrp, VENC_CHN VencChn, VIDEO_
 }
 
 HI_S32 LOTO_COMM_VENC_SaveSnap(VENC_STREAM_S* pstStream, char* jpg, int* jpg_size) {
-    HI_S32 s32Ret;
-
     // char         acFile[128] = {0};
     // FILE*        pFile;
 
@@ -334,6 +332,8 @@ HI_S32 LOTO_COMM_VENC_SaveSnap(VENC_STREAM_S* pstStream, char* jpg, int* jpg_siz
     return HI_SUCCESS;
 }
 
+// static char mjpegPackBuf[1024 * 1024] = {0};
+
 HI_S32 LOTO_COMM_VENC_GetSnapJpg(char* jpg, int* jpg_size) {
     if (gs_snap_group_status != 1) {
         LOGE("snap venc group has not yet been created!\n");
@@ -361,7 +361,7 @@ HI_S32 LOTO_COMM_VENC_GetSnapJpg(char* jpg, int* jpg_size) {
     FD_SET(s32VencFd, &read_fds);
 
     TimeoutVal.tv_sec  = 0;
-    TimeoutVal.tv_usec = 1000 * 100;
+    TimeoutVal.tv_usec = 1000 * 300;
 
     s32Ret = select(s32VencFd + 1, &read_fds, NULL, NULL, &TimeoutVal);
     if (s32Ret < 0) {
@@ -371,9 +371,11 @@ HI_S32 LOTO_COMM_VENC_GetSnapJpg(char* jpg, int* jpg_size) {
     } else if (0 == s32Ret) {
         LOGE("snap time out!\n");
         return HI_FAILURE;
-
     } else {
+
         if (FD_ISSET(s32VencFd, &read_fds)) {
+            memset(&stStream, 0, sizeof(stStream));
+
             s32Ret = HI_MPI_VENC_Query(VencChn, &stStat);
             if (s32Ret != HI_SUCCESS) {
                 LOGE("HI_MPI_VENC_Query failed with %#x\n", s32Ret);
@@ -381,6 +383,7 @@ HI_S32 LOTO_COMM_VENC_GetSnapJpg(char* jpg, int* jpg_size) {
             }
 
             stStream.pstPack = (VENC_PACK_S*)malloc(sizeof(VENC_PACK_S) * stStat.u32CurPacks);
+            // stStream.pstPack = (VENC_PACK_S*)mjpegPackBuf;
             if (NULL == stStream.pstPack) {
                 LOGE("malloc memory failed!\n");
                 return HI_FAILURE;
@@ -392,6 +395,7 @@ HI_S32 LOTO_COMM_VENC_GetSnapJpg(char* jpg, int* jpg_size) {
             if (HI_SUCCESS != s32Ret) {
                 LOGE("HI_MPI_VENC_GetStream failed with %#x\n", s32Ret);
                 free(stStream.pstPack);
+                // memset(mjpegPackBuf, 0, sizeof(mjpegPackBuf));
                 stStream.pstPack = NULL;
                 return HI_FAILURE;
             }
@@ -400,6 +404,7 @@ HI_S32 LOTO_COMM_VENC_GetSnapJpg(char* jpg, int* jpg_size) {
             if (HI_SUCCESS != s32Ret) {
                 LOGE("HI_MPI_VENC_GetStream failed with %#x\n", s32Ret);
                 free(stStream.pstPack);
+                // memset(mjpegPackBuf, 0, sizeof(mjpegPackBuf));
                 stStream.pstPack = NULL;
                 return HI_FAILURE;
             }
@@ -408,11 +413,13 @@ HI_S32 LOTO_COMM_VENC_GetSnapJpg(char* jpg, int* jpg_size) {
             if (s32Ret) {
                 LOGE("HI_MPI_VENC_ReleaseStream failed with %#x\n", s32Ret);
                 free(stStream.pstPack);
+                // memset(mjpegPackBuf, 0, sizeof(mjpegPackBuf));
                 stStream.pstPack = NULL;
                 return HI_FAILURE;
             }
 
             free(stStream.pstPack);
+            // memset(mjpegPackBuf, 0, sizeof(mjpegPackBuf));
             stStream.pstPack = NULL;
         }
     }

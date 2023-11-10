@@ -334,18 +334,19 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
     {
         case PT_H264:
         {
-            LOGD("video encoder: h264\n");
-            stH264Attr.u32MaxPicWidth = stPicSize.u32Width;
+            LOGD("PT_H264 group\n");
+
+            stH264Attr.u32MaxPicWidth  = stPicSize.u32Width;
             stH264Attr.u32MaxPicHeight = stPicSize.u32Height;
-            stH264Attr.u32PicWidth = stPicSize.u32Width;/*the picture width*/
-            stH264Attr.u32PicHeight = stPicSize.u32Height;/*the picture height*/
-            stH264Attr.u32BufSize  = stPicSize.u32Width * stPicSize.u32Height * 2;/*stream buffer size*/
-            stH264Attr.u32Profile  = 2;/*0: baseline; 1:MP; 2:HP   ? */
-            stH264Attr.bByFrame = HI_TRUE;/*get stream mode is slice mode or frame mode?*/
-            stH264Attr.bField = HI_FALSE;  /* surpport frame code only for hi3516, bfield = HI_FALSE */
-            stH264Attr.bMainStream = HI_TRUE; /* surpport main stream only for hi3516, bMainStream = HI_TRUE */
-            stH264Attr.u32Priority = 0; /*channels precedence level. invalidate for hi3516*/
-            stH264Attr.bVIField = HI_FALSE;/*the sign of the VI picture is field or frame. Invalidate for hi3516*/
+            stH264Attr.u32PicWidth     = stPicSize.u32Width;                           /*the picture width*/
+            stH264Attr.u32PicHeight    = stPicSize.u32Height;                          /*the picture height*/
+            stH264Attr.u32BufSize      = stPicSize.u32Width * stPicSize.u32Height * 2; /*stream buffer size*/
+            stH264Attr.u32Profile      = 2;                                            /*0: baseline; 1:MP; 2:HP   ? */
+            stH264Attr.bByFrame        = HI_TRUE;                                      /*get stream mode is slice mode or frame mode?*/
+            stH264Attr.bField          = HI_FALSE;                                     /* surpport frame code only for hi3516, bfield = HI_FALSE */
+            stH264Attr.bMainStream     = HI_TRUE;                                      /* surpport main stream only for hi3516, bMainStream = HI_TRUE */
+            stH264Attr.u32Priority     = 0;                                            /*channels precedence level. invalidate for hi3516*/
+            stH264Attr.bVIField        = HI_FALSE;                                     /*the sign of the VI picture is field or frame. Invalidate for hi3516*/
             memcpy(&stVencChnAttr.stVeAttr.stAttrH264e, &stH264Attr, sizeof(VENC_ATTR_H264_S));
 
             if(SAMPLE_RC_CBR == enRcMode)
@@ -399,12 +400,15 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
             else if (SAMPLE_RC_VBR == enRcMode) 
             {
                 LOGD("RcMode: VBR\n");
+
                 stVencChnAttr.stRcAttr.enRcMode = VENC_RC_MODE_H264VBR;
-                stH264Vbr.u32Gop = 30;//(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
-                stH264Vbr.u32StatTime = 1;
-                stH264Vbr.u32ViFrmRate = 60;//(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
-                stH264Vbr.fr32TargetFrmRate = g_framerate; //(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
+                stH264Vbr.u32Gop                = 30; //(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
+                stH264Vbr.u32StatTime           = 1;
+                stH264Vbr.u32ViFrmRate          = 60;          //(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
+                stH264Vbr.fr32TargetFrmRate     = g_framerate; //(VIDEO_ENCODING_MODE_PAL== enNorm)?25:30;
+
                 LOGD("Target Framerate: %d\n", stH264Vbr.fr32TargetFrmRate);
+
                 stH264Vbr.u32MinQp = 10;
                 stH264Vbr.u32MaxQp = 40;
                 switch (enSize)
@@ -441,15 +445,17 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
         
         case PT_MJPEG:
         {
-            stMjpegAttr.u32MaxPicWidth = stPicSize.u32Width;
+            LOGD("MJPEG group\n");
+
+            stMjpegAttr.u32MaxPicWidth  = stPicSize.u32Width;
             stMjpegAttr.u32MaxPicHeight = stPicSize.u32Height;
-            stMjpegAttr.u32PicWidth = stPicSize.u32Width;
-            stMjpegAttr.u32PicHeight = stPicSize.u32Height;
-            stMjpegAttr.u32BufSize = stPicSize.u32Width * stPicSize.u32Height * 2;
-            stMjpegAttr.bByFrame = HI_TRUE;  /*get stream mode is field mode  or frame mode*/
-            stMjpegAttr.bMainStream = HI_TRUE;  /*main stream or minor stream types?*/
-            stMjpegAttr.bVIField = HI_FALSE;  /*the sign of the VI picture is field or frame?*/
-            stMjpegAttr.u32Priority = 0;/*channels precedence level*/
+            stMjpegAttr.u32PicWidth     = stPicSize.u32Width;
+            stMjpegAttr.u32PicHeight    = stPicSize.u32Height;
+            stMjpegAttr.u32BufSize      = stPicSize.u32Width * stPicSize.u32Height * 2;
+            stMjpegAttr.bByFrame        = HI_TRUE;  /*get stream mode is field mode  or frame mode*/
+            stMjpegAttr.bMainStream     = HI_TRUE;  /*main stream or minor stream types?*/
+            stMjpegAttr.bVIField        = HI_FALSE; /*the sign of the VI picture is field or frame?*/
+            stMjpegAttr.u32Priority     = 0;        /*channels precedence level*/
             memcpy(&stVencChnAttr.stVeAttr.stAttrMjpeg, &stMjpegAttr, sizeof(VENC_ATTR_MJPEG_S));
 
             if(SAMPLE_RC_FIXQP == enRcMode)
@@ -494,12 +500,12 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
             }
             else if (SAMPLE_RC_VBR == enRcMode) 
             {
-                stVencChnAttr.stRcAttr.enRcMode = VENC_RC_MODE_MJPEGVBR;
-                stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32StatTime = 1;
-                stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32ViFrmRate = (VIDEO_ENCODING_MODE_PAL == enNorm)?25:30;
+                stVencChnAttr.stRcAttr.enRcMode                          = VENC_RC_MODE_MJPEGVBR;
+                stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32StatTime       = 1;
+                stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32ViFrmRate      = 60;
                 stVencChnAttr.stRcAttr.stAttrMjpegeVbr.fr32TargetFrmRate = 5;
-                stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32MinQfactor = 50;
-                stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32MaxQfactor = 95;
+                stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32MinQfactor     = 50;
+                stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32MaxQfactor     = 95;
                 switch (enSize)
                 {
                   case PIC_QCIF:
@@ -514,7 +520,7 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
                 	   stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32MaxBitRate = 1024*2*3;
                        break;
                   case PIC_HD720:   /* 1280 * 720 */
-                	   stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32MaxBitRate = 1024*3*3;
+                	   stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32MaxBitRate = 1024;
                 	   break;
                   case PIC_HD1080:  /* 1920 * 1080 */
                   	   stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32MaxBitRate = 1024*6*3;
@@ -1091,8 +1097,8 @@ HI_VOID* SAMPLE_COMM_VENC_GetVencStreamProc(HI_VOID *p)
      step 2:  Start to get streams of each channel.
     ******************************************/
 
-    long long ll_us_sys_timestamp = 0;
-    long long ll_first_timestamp = 0;
+    // long long ll_us_sys_timestamp = 0;
+    // long long ll_first_timestamp = 0;
     char packbuffer[1024 * 1024] = {0};
     while (HI_TRUE == pstPara->bThreadStart)
     {

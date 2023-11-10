@@ -58,6 +58,8 @@ typedef unsigned long ULONG;
 typedef unsigned int  UINT;
 typedef unsigned char BYTE;
 
+extern int gs_snap_group_status;
+
 // int     shmid;
 // void*   pshm;
 char     sz_pushurl[1024];
@@ -86,8 +88,8 @@ int is_rtmp_write = 0;
 HI_S32 LOTO_RTMP_VA_CLASSIC()
 {
     SAMPLE_VI_MODE_E enViMode      = SAMPLE_VI_MODE_1_720P;
-    VIDEO_NORM_E     gs_enNorm     = VIDEO_ENCODING_MODE_PAL;
-    HI_U32           u32ViChnCnt   = 1;
+    VIDEO_NORM_E     enNorm        = VIDEO_ENCODING_MODE_PAL;
+    HI_U32           u32ViChnCnt   = 2;
     HI_S32           s32VpssGrpCnt = 1;
     PAYLOAD_TYPE_E   enPayLoad     = PT_H264;
 
@@ -119,7 +121,7 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
     ******************************************/
     memset(&stVbConf, 0, sizeof(VB_CONF_S));
 
-    u32BlkSize = SAMPLE_COMM_SYS_CalcPicVbBlkSize(gs_enNorm, PIC_HD720, SAMPLE_PIXEL_FORMAT, SAMPLE_SYS_ALIGN_WIDTH);
+    u32BlkSize = SAMPLE_COMM_SYS_CalcPicVbBlkSize(enNorm, PIC_HD720, SAMPLE_PIXEL_FORMAT, SAMPLE_SYS_ALIGN_WIDTH);
 
     stVbConf.u32MaxPoolCnt = 128;
 
@@ -145,7 +147,7 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
     /******************************************
      step 3: start vi dev & chn to capture
     ******************************************/
-    s32Ret = SAMPLE_COMM_VI_Start(enViMode, gs_enNorm);
+    s32Ret = SAMPLE_COMM_VI_Start(enViMode, enNorm);
     if (HI_SUCCESS != s32Ret) {
         LOGE("start vi failed!\n");
         goto END_VENC_1HD_0;
@@ -154,7 +156,7 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
     /******************************************
      step 4: start vpss and vi bind vpss (subchn needn't bind vpss in this mode)
     ******************************************/
-    s32Ret = SAMPLE_COMM_SYS_GetPicSize(gs_enNorm, PIC_HD720, &stSize);
+    s32Ret = SAMPLE_COMM_SYS_GetPicSize(enNorm, PIC_HD720, &stSize);
     if (HI_SUCCESS != s32Ret) {
         LOGE("SAMPLE_COMM_SYS_GetPicSize failed!\n");
         goto END_VENC_1HD_0;
@@ -184,7 +186,7 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
 
     enRcMode = SAMPLE_RC_VBR;
 
-    s32Ret = SAMPLE_COMM_VENC_Start(VencGrp, VencChn, enPayLoad, gs_enNorm, PIC_HD720, enRcMode);
+    s32Ret = SAMPLE_COMM_VENC_Start(VencGrp, VencChn, enPayLoad, enNorm, PIC_HD720, enRcMode);
     if (HI_SUCCESS != s32Ret) {
         LOGE("Start Venc failed!\n");
         goto END_VENC_1HD_3;
@@ -196,19 +198,28 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
         goto END_VENC_1HD_3;
     }
 
-    s32Ret = LOTO_COMM_VENC_StartGetStream(u32ViChnCnt, &venc_Pid);
+    s32Ret = LOTO_COMM_VENC_StartGetStream(1, &venc_Pid);
     if (HI_SUCCESS != s32Ret) {
         LOGE("Start Venc failed!\n");
         goto END_VENC_1HD_3;
     }
 
-    VENC_GRP snapVencGrp = 1;
-    VENC_CHN snapVencChn = 1;
+    VENC_GRP       snapVencGrp = 1;
+    VENC_CHN       snapVencChn = 1;
+    PAYLOAD_TYPE_E snapPayLoad = PT_MJPEG;
 
-    s32Ret = LOTO_COMM_VENC_CreateSnapGroup(snapVencGrp, snapVencChn, gs_enNorm, &stSize);
+    // s32Ret = LOTO_COMM_VENC_CreateSnapGroup(snapVencGrp, snapVencChn, enNorm, &stSize);
+    // if (HI_SUCCESS != s32Ret) {
+    //     LOGE("LOTO_COMM_VENC_CreateSnapGroup failed!\n");
+    // }
+
+    s32Ret = SAMPLE_COMM_VENC_Start(snapVencGrp, snapVencChn, snapPayLoad, enNorm, PIC_HD720, enRcMode);
     if (HI_SUCCESS != s32Ret) {
-        LOGE("LOTO_COMM_VENC_CreateSnapGroup failed!\n");
+        LOGE("Start Venc failed!\n");
+        goto END_VENC_1HD_3;
     }
+
+    gs_snap_group_status = 1;
 
     s32Ret = SAMPLE_COMM_VENC_BindVpss(snapVencGrp, VpssGrp, VPSS_PRE0_CHN);
     if (HI_SUCCESS != s32Ret) {
@@ -292,7 +303,9 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
 
 END_VENC_1HD_3:
     SAMPLE_COMM_VENC_UnBindVpss(VencGrp, VpssGrp, VPSS_BSTR_CHN);
+    SAMPLE_COMM_VENC_UnBindVpss(snapVencGrp, VpssGrp, VPSS_PRE0_CHN);
     SAMPLE_COMM_VENC_Stop(VencGrp, VencChn);
+    SAMPLE_COMM_VENC_Stop(snapVencGrp, snapVencChn);
     SAMPLE_COMM_VI_UnBindVpss(enViMode);
 END_VENC_1HD_2: // vpss stop
     SAMPLE_COMM_VPSS_Stop(s32VpssGrpCnt, VPSS_MAX_CHN_NUM);
@@ -767,7 +780,7 @@ void fill_device_net_info(DeviceInfo* device_info)
 
 #define VER_MAJOR 0
 #define VER_MINOR 4
-#define VER_BUILD 0
+#define VER_BUILD 2
 
 int main(int argc, char* argv[])
 {

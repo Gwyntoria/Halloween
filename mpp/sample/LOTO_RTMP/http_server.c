@@ -745,7 +745,7 @@ void* accept_request(void* pclient)
     header_size = get_request_line(client, buf, sizeof(buf));
     // handle_request(client, buf, sizeof(buf), &header_size);
 
-    LOGD("request_line: %s\n", buf);
+    LOGD("request_line: %s", buf);
 
     parse_request_line(buf, header_size, method, url, version);
 
@@ -815,13 +815,13 @@ void* accept_request(void* pclient)
         int  jpg_size            = 0;
 
         if (LOTO_COMM_VENC_GetSnapJpg(jpg_buf, &jpg_size) == 0) {
-            LOGD("jpg_size: %d\n", jpg_size);
+            LOGD("jpg_size:     %d\n", jpg_size);
 
             send_header(client, "image/jpeg", jpg_size);
 
             size_t total_len = 0;
             while (total_len < jpg_size) {
-                char   buf[4096] = {0};
+                char   buf[2048] = {0};
                 size_t len       =  0;
 
                 len = (total_len + sizeof(buf) <= jpg_size) ? sizeof(buf) : (jpg_size - total_len);
@@ -838,7 +838,7 @@ void* accept_request(void* pclient)
                 // LOGD("total_len: %ld, send_len: %ld\n", total_len, send_len);
             }
 
-            LOGD("total_len: %lu\n", total_len);
+            LOGD("total_len:    %lu\n\n", total_len);
 
         } else {
             char response_content[1024] = {0};
@@ -877,18 +877,28 @@ void* accept_request(void* pclient)
 // socket initial: socket() ---> bind() ---> listen()
 int startup(uint16_t *port)
 {
+    int ret   = 0;
     int httpd = 0;
+    int opt   = 0;
 
     httpd = socket(AF_INET, SOCK_STREAM, 0);
     if (httpd == -1)
         error_die("socket");
 
-    int opt = -1;
+    opt = -1;
 
-    int ret = setsockopt(httpd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    ret = setsockopt(httpd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     if (-1 == ret) {
         perror("setsockopt");
-        return -1;
+        // return -1;
+    }
+
+    opt = 4096;
+
+    ret = setsockopt(httpd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt));
+    if (-1 == ret) {
+        perror("setsockopt");
+        // return -1;
     }
 
     // // 设置Socket为非阻塞模式
@@ -937,13 +947,7 @@ void *http_server(void *arg)
 
     while (1) {
         client_sock = accept(server_sock, (struct sockaddr *)&client_name, &client_name_len);
-        // if (client_sock == -1) {
-        //     error_die("accept");
-        // } else {
-        //     // LOGI("HTTP client connected.\n");
-        // }
 
-        /* accept_request(client_sock); */
         if (client_sock > 0) {
             pthread_t request_id;
             if (pthread_create(&request_id, NULL, accept_request, (void*)&client_sock) != 0)
@@ -954,8 +958,13 @@ void *http_server(void *arg)
             error_die("accept");
         }
 
-        // accept_request(client_sock);
-        // close(client_sock);
+        // if (client_sock > 0) {
+        //     accept_request(client_sock);
+
+        // } else {
+        //     error_die("accept");
+        // }
+
         // LOGI("HTTP client disconnected.\n");
     }
 
