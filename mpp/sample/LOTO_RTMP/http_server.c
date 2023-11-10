@@ -2,6 +2,8 @@
 
 #include <arpa/inet.h>
 #include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -13,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
 
 #include "ConfigParser.h"
 #include "common.h"
@@ -494,10 +497,7 @@ void send_header(int client, const char *content_type, int content_length)
             "\r\n",
             content_type, content_length);
 
-    // int len = send(client, header, strlen(header), 0);
-
-    // printf("\nheader:\n%s\n", header);
-    // printf("len = %d, header_len = %ld\n", len, strlen(header));
+    send(client, header, strlen(header), MSG_NOSIGNAL);
 }
 
 // 函数用于读取HTML文件的内容
@@ -577,7 +577,7 @@ int send_html_response(int client_socket, const char *file_path)
     // LOGD("content_length: %d\n", content_length);
     // LOGD("response: %s\n", response);
 
-    if (send(client_socket, response, strlen(response), 0) < 0) {
+    if (send(client_socket, response, strlen(response), MSG_NOSIGNAL) < 0) {
         perror("send");
         free(html_content);
         return -1;
@@ -599,7 +599,7 @@ int send_plain_response(int client_socket, const char *content)
     LOGD("response:\n%s\n", response);
 #endif
 
-    if (send(client_socket, response, strlen(response), 0) < 0) {
+    if (send(client_socket, response, strlen(response), MSG_NOSIGNAL) < 0) {
         return -1;
     }
 
@@ -727,10 +727,10 @@ void handle_request(int client_socket, char* buf, int buf_size, int* header_size
     free(request_header);
 }
 
-// int accept_request(int client)
-void* accept_request(void* pclient)
+// void* accept_request(void* pclient)
+int accept_request(int client)
 {
-    int client = *(int*)pclient;
+    // int client = *(int*)pclient;
 
     int  header_size = 0;
     char buf[1024]   = {0};
@@ -742,12 +742,19 @@ void* accept_request(void* pclient)
     char query_string[1024] = {0};
 
     // 获取一行HTTP请求报文
-    header_size = get_request_line(client, buf, sizeof(buf));
-    // handle_request(client, buf, sizeof(buf), &header_size);
+    // header_size = get_request_line(client, buf, sizeof(buf));
+    handle_request(client, buf, sizeof(buf), &header_size);
 
-    LOGD("request_line: %s", buf);
+    // LOGD("http_header: %s\n", buf);
 
     parse_request_line(buf, header_size, method, url, version);
+
+    LOGD("url: %s\n", url);
+
+    // printf("method:   %s\n"
+    //      "url:      %s\n"
+    //      "version:  %s\n", 
+    //      method, url, version);
 
     // 暂时只支持get方法
     // if (strcasecmp(method, "GET")) {
@@ -811,7 +818,7 @@ void* accept_request(void* pclient)
         }
 
     } else if (strcmp(path, "/1.jpg") == 0) {
-        char jpg_buf[1024 * 600] = {0};
+        char jpg_buf[1024 * 500] = {0};
         int  jpg_size            = 0;
 
         if (LOTO_COMM_VENC_GetSnapJpg(jpg_buf, &jpg_size) == 0) {
@@ -821,14 +828,14 @@ void* accept_request(void* pclient)
 
             size_t total_len = 0;
             while (total_len < jpg_size) {
-                char   buf[2048] = {0};
-                size_t len       =  0;
+                char   buf[1024 * 4] = {0};
+                size_t len           = 0;
 
                 len = (total_len + sizeof(buf) <= jpg_size) ? sizeof(buf) : (jpg_size - total_len);
                 memcpy(buf, jpg_buf + total_len, len);
 
-                ssize_t send_len = send(client, buf, len, 0);
-                if (send_len < 0) {
+                ssize_t send_len = send(client, buf, len, MSG_NOSIGNAL);
+                if (send_len <= 0) {
                     LOGD("send jpg error\n");
                     break;
                 }
@@ -841,7 +848,7 @@ void* accept_request(void* pclient)
             LOGD("total_len:    %lu\n\n", total_len);
 
         } else {
-            char response_content[1024] = {0};
+            char response_content[128] = {0};
 
             LOGE("failed to get snap\r\n");
             sprintf(response_content, "failed to get snap\r\n");
@@ -867,9 +874,8 @@ void* accept_request(void* pclient)
         not_found(client);
     }
 
-    sleep(2);
-    close(client);
-    pthread_detach(pthread_self());
+    // close(client);
+    // pthread_detach(pthread_self());
 
     return 0;
 }
@@ -893,7 +899,7 @@ int startup(uint16_t *port)
         // return -1;
     }
 
-    opt = 4096;
+    opt = 1024 * 10;
 
     ret = setsockopt(httpd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(opt));
     if (-1 == ret) {
@@ -933,6 +939,51 @@ int startup(uint16_t *port)
     return (httpd);
 }
 
+pthread_t accept_thread    = 0;
+int       accept_thread_id = 0;
+
+int socket_max  = 10;
+int sockets[10] = {0};
+int socket_head = 0;
+int socket_tail = 0;
+
+void thread_accept_request(void *param) {
+    accept_thread_id++;
+    while (1) {   
+        int socket = sockets[socket_tail % socket_max];
+        sockets[socket_tail % socket_max] = 0;
+
+        if (socket != 0) {
+            socket_tail++;
+            accept_request(socket);
+            usleep(1000 * 200);
+            close(socket);
+        } else {
+            usleep(1000);
+        }
+    }
+    accept_thread_id--;
+}
+
+void try_accept_request(int socket) {
+    if (accept_thread == 0) {
+        if (pthread_create(&accept_thread, NULL, (void *)thread_accept_request, NULL) != 0) {
+            perror("accept_request");
+        }
+    }
+
+    if (socket_tail == socket_head) {
+        socket_head = socket_tail = 0;
+    }
+
+    if (socket_tail + socket_max == socket_head) {
+        close(socket);
+    } else {
+        sockets[socket_head % socket_max] = socket;
+        socket_head++;
+    }
+}
+
 void *http_server(void *arg)
 {
     LOGI("====== Start HTTP server ======\n");
@@ -945,27 +996,42 @@ void *http_server(void *arg)
     server_sock = startup(&port); // 服务器端监听套接字设置
     LOGI("http running on port %d\n", port);
 
+    /* // while (1) {
+    //     client_sock = accept(server_sock, (struct sockaddr *)&client_name, &client_name_len);
+    //     if (client_sock == -1) {
+    //         if (errno == EWOULDBLOCK || errno == EAGAIN) {
+    //             // 没有等待中的连接请求，继续循环
+    //             usleep(1000 * 10);
+    //             continue;
+    //         } else {
+    //             perror("accept");
+    //             exit(EXIT_FAILURE);
+    //         }
+    //     }
+
+    //     pthread_t request_id;
+    //     if (pthread_create(&request_id, NULL, accept_request, (void*)&client_sock) != 0)
+    //         error_die("accept_request");
+    //     usleep(10);
+
+    //     // if (client_sock > 0) {
+    //     //     accept_request(client_sock);
+
+    //     // } else {
+    //     //     error_die("accept");
+    //     // }
+
+    //     // LOGI("HTTP client disconnected.\n");
+    // } */
+
     while (1) {
-        client_sock = accept(server_sock, (struct sockaddr *)&client_name, &client_name_len);
-
-        if (client_sock > 0) {
-            pthread_t request_id;
-            if (pthread_create(&request_id, NULL, accept_request, (void*)&client_sock) != 0)
-                error_die("accept_request");
-            usleep(10);
-
-        } else {
+        client_sock = accept(server_sock, (struct sockaddr*)&client_name, &client_name_len);
+        if (client_sock == -1) {
             error_die("accept");
+        } else {
+            // printf("HTTP client connected.\n");
         }
-
-        // if (client_sock > 0) {
-        //     accept_request(client_sock);
-
-        // } else {
-        //     error_die("accept");
-        // }
-
-        // LOGI("HTTP client disconnected.\n");
+        try_accept_request(client_sock);
     }
 
     close(server_sock);
