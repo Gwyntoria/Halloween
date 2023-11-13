@@ -516,7 +516,7 @@ HI_S32 SAMPLE_COMM_VI_Mode2Param(SAMPLE_VI_MODE_E enViMode, SAMPLE_VI_PARAM_S *p
 		case SAMPLE_VI_MODE_1_720P:
             pstViParam->s32ViDevCnt = 1;
             pstViParam->s32ViDevInterval = 1;
-            pstViParam->s32ViChnCnt = 2;
+            pstViParam->s32ViChnCnt = 1;
             pstViParam->s32ViChnInterval = 1;	
 			break;
 		case SAMPLE_VI_MODE_16_Cif:
