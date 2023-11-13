@@ -520,7 +520,7 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
                 	   stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32MaxBitRate = 1024*2*3;
                        break;
                   case PIC_HD720:   /* 1280 * 720 */
-                	   stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32MaxBitRate = 1024;
+                	   stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32MaxBitRate = 512;
                 	   break;
                   case PIC_HD1080:  /* 1920 * 1080 */
                   	   stVencChnAttr.stRcAttr.stAttrMjpegeVbr.u32MaxBitRate = 1024*6*3;
@@ -542,10 +542,10 @@ HI_S32 SAMPLE_COMM_VENC_Start(VENC_GRP VencGrp,VENC_CHN VencChn, PAYLOAD_TYPE_E 
         case PT_JPEG:
             stJpegAttr.u32PicWidth  = stPicSize.u32Width;
             stJpegAttr.u32PicHeight = stPicSize.u32Height;
-            stJpegAttr.u32BufSize = stPicSize.u32Width * stPicSize.u32Height * 2;
-            stJpegAttr.bByFrame = HI_TRUE;/*get stream mode is field mode  or frame mode*/
-            stJpegAttr.bVIField = HI_FALSE;/*the sign of the VI picture is field or frame?*/
-            stJpegAttr.u32Priority = 0;/*channels precedence level*/
+            stJpegAttr.u32BufSize   = stPicSize.u32Width * stPicSize.u32Height * 2;
+            stJpegAttr.bByFrame     = HI_TRUE;  /*get stream mode is field mode  or frame mode*/
+            stJpegAttr.bVIField     = HI_FALSE; /*the sign of the VI picture is field or frame?*/
+            stJpegAttr.u32Priority  = 0;        /*channels precedence level*/
             memcpy(&stVencChnAttr.stVeAttr.stAttrMjpeg, &stMjpegAttr, sizeof(VENC_ATTR_MJPEG_S));
             break;
         default:

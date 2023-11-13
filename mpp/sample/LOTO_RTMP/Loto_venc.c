@@ -293,7 +293,7 @@ HI_S32 LOTO_COMM_VENC_CreateSnapGroup(VENC_GRP VencGrp, VENC_CHN VencChn, VIDEO_
         return HI_FAILURE;
     }
 
-    gs_snap_group_status = 1;
+    // gs_snap_group_status = 1;
 
     return HI_SUCCESS;
 }
