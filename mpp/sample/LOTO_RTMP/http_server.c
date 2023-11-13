@@ -742,14 +742,14 @@ int accept_request(int client)
     char query_string[1024] = {0};
 
     // 获取一行HTTP请求报文
-    // header_size = get_request_line(client, buf, sizeof(buf));
-    handle_request(client, buf, sizeof(buf), &header_size);
+    header_size = get_request_line(client, buf, sizeof(buf));
+    // handle_request(client, buf, sizeof(buf), &header_size);
 
     // LOGD("http_header: %s\n", buf);
 
     parse_request_line(buf, header_size, method, url, version);
 
-    LOGD("url: %s\n", url);
+    // LOGD("url: %s\n", url);
 
     // printf("method:   %s\n"
     //      "url:      %s\n"
@@ -781,6 +781,8 @@ int accept_request(int client)
         //     if (send_html_response(client, HTML_FILE_PATH) != 0)
         //         LOGE("send error\n");
     } else if (strcasecmp(path, "/set_params") == 0) {
+        LOGD("url: %s\n", url);
+
         char content[1024] = {0};
 
         if (deal_query_string(query_string, content) < 0) {
@@ -845,7 +847,7 @@ int accept_request(int client)
                 // LOGD("total_len: %ld, send_len: %ld\n", total_len, send_len);
             }
 
-            LOGD("total_len:    %lu\n\n", total_len);
+            LOGD("total_len:    %zu\n\n", total_len);
 
         } else {
             char response_content[128] = {0};
@@ -858,7 +860,6 @@ int accept_request(int client)
                 return -1;
             }
         }
-
 
     } else if ((strcmp(path, "/") == 0) || (strcasecmp(path, "/home") == 0)) {
         char device_info_content[4096] = {0};
@@ -996,42 +997,20 @@ void *http_server(void *arg)
     server_sock = startup(&port); // 服务器端监听套接字设置
     LOGI("http running on port %d\n", port);
 
-    /* // while (1) {
-    //     client_sock = accept(server_sock, (struct sockaddr *)&client_name, &client_name_len);
-    //     if (client_sock == -1) {
-    //         if (errno == EWOULDBLOCK || errno == EAGAIN) {
-    //             // 没有等待中的连接请求，继续循环
-    //             usleep(1000 * 10);
-    //             continue;
-    //         } else {
-    //             perror("accept");
-    //             exit(EXIT_FAILURE);
-    //         }
-    //     }
-
-    //     pthread_t request_id;
-    //     if (pthread_create(&request_id, NULL, accept_request, (void*)&client_sock) != 0)
-    //         error_die("accept_request");
-    //     usleep(10);
-
-    //     // if (client_sock > 0) {
-    //     //     accept_request(client_sock);
-
-    //     // } else {
-    //     //     error_die("accept");
-    //     // }
-
-    //     // LOGI("HTTP client disconnected.\n");
-    // } */
-
     while (1) {
         client_sock = accept(server_sock, (struct sockaddr*)&client_name, &client_name_len);
         if (client_sock == -1) {
-            error_die("accept");
+            // error_die("accept");
+            close(client_sock);
+            continue;
         } else {
             // printf("HTTP client connected.\n");
         }
-        try_accept_request(client_sock);
+        // try_accept_request(client_sock);
+
+        accept_request(client_sock);
+        usleep(1000 * 10);
+        close(client_sock);
     }
 
     close(server_sock);

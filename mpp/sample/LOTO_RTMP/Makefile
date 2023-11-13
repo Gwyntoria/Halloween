@@ -1,6 +1,6 @@
 VER_MAJOR:=0
 VER_MINOR:=4
-VER_BUILD:=2
+VER_BUILD:=3
 BIN_VERSION:=$(VER_MAJOR).$(VER_MINOR).$(VER_BUILD)
 
 include ../Makefile.param
