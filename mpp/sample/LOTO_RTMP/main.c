@@ -198,12 +198,6 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
         goto END_VENC_1HD_3;
     }
 
-    s32Ret = LOTO_COMM_VENC_StartGetStream(1, &venc_Pid);
-    if (HI_SUCCESS != s32Ret) {
-        LOGE("Start Venc failed!\n");
-        goto END_VENC_1HD_3;
-    }
-
     VENC_GRP       snapVencGrp = 1;
     VENC_CHN       snapVencChn = 1;
     PAYLOAD_TYPE_E snapPayLoad = PT_MJPEG;
@@ -219,12 +213,18 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
         goto END_VENC_1HD_3;
     }
 
-    gs_snap_group_status = 1;
-
     s32Ret = SAMPLE_COMM_VENC_BindVpss(snapVencGrp, VpssGrp, VPSS_PRE0_CHN);
     if (HI_SUCCESS != s32Ret) {
         LOGE("SAMPLE_COMM_VENC_BindVpss failed!\n");
         return HI_FAILURE;
+    }
+
+    gs_snap_group_status = 1;
+
+    s32Ret = LOTO_COMM_VENC_StartGetStream(u32ViChnCnt, &venc_Pid);
+    if (HI_SUCCESS != s32Ret) {
+        LOGE("Start Venc failed!\n");
+        goto END_VENC_1HD_3;
     }
 
     //* snap test
@@ -403,6 +403,8 @@ void* LOTO_VIDEO_AUDIO_RTMP(void* arg)
         a_ringbuflen = 0;
         v_ringbuflen = 0;
     }
+
+    usleep(1000);
 }
 
 void* LOTO_VIDEO_AUDIO_RTMP_1(void* p)
@@ -780,7 +782,7 @@ void fill_device_net_info(DeviceInfo* device_info)
 
 #define VER_MAJOR 0
 #define VER_MINOR 4
-#define VER_BUILD 3
+#define VER_BUILD 5
 
 int main(int argc, char* argv[])
 {
@@ -840,13 +842,13 @@ int main(int argc, char* argv[])
     } else if (gs_push_algorithm == 1) {
         pthread_create(&rtmp_pid, NULL, LOTO_VIDEO_AUDIO_RTMP_1, NULL);
     }
-    usleep(1000 * 10);
+    usleep(1000);
 
-    pthread_t sync_time_pid;
-    if (pthread_create(&sync_time_pid, NULL, sync_time, NULL) != 0) {
-        fprintf(stderr, "Failed to create sync_time thread\n");
-    }
-    usleep(100);
+    // pthread_t sync_time_pid;
+    // if (pthread_create(&sync_time_pid, NULL, sync_time, NULL) != 0) {
+    //     fprintf(stderr, "Failed to create sync_time thread\n");
+    // }
+    // usleep(100);
 
     pthread_t http_server_thread;
     if (pthread_create(&http_server_thread, NULL, http_server, NULL) != 0) {
