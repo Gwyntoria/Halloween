@@ -820,11 +820,11 @@ int accept_request(int client)
         }
 
     } else if (strcmp(path, "/1.jpg") == 0) {
-        char jpg_buf[1024 * 1024] = {0};
+        char jpg_buf[1024 * 500] = {0};
         int  jpg_size            = 0;
 
         if (LOTO_COMM_VENC_GetSnapJpg(jpg_buf, &jpg_size) == 0) {
-            LOGD("jpg_size:     %d\n", jpg_size);
+            // LOGD("jpg_size:     %d\n", jpg_size);
 
             send_header(client, "image/jpeg", jpg_size);
 
@@ -847,7 +847,7 @@ int accept_request(int client)
                 // LOGD("total_len: %ld, send_len: %ld\n", total_len, send_len);
             }
 
-            LOGD("total_len:    %zu\n\n", total_len);
+            // LOGD("total_len:    %zu\n\n", total_len);
 
             usleep(1000 * 20);
 

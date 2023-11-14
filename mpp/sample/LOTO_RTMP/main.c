@@ -402,9 +402,10 @@ void* LOTO_VIDEO_AUDIO_RTMP(void* arg)
 
         a_ringbuflen = 0;
         v_ringbuflen = 0;
+
+        usleep(1000);
     }
 
-    usleep(1000);
 }
 
 void* LOTO_VIDEO_AUDIO_RTMP_1(void* p)
@@ -782,7 +783,7 @@ void fill_device_net_info(DeviceInfo* device_info)
 
 #define VER_MAJOR 0
 #define VER_MINOR 4
-#define VER_BUILD 5
+#define VER_BUILD 6
 
 int main(int argc, char* argv[])
 {
@@ -844,11 +845,11 @@ int main(int argc, char* argv[])
     }
     usleep(1000);
 
-    // pthread_t sync_time_pid;
-    // if (pthread_create(&sync_time_pid, NULL, sync_time, NULL) != 0) {
-    //     fprintf(stderr, "Failed to create sync_time thread\n");
-    // }
-    // usleep(100);
+    pthread_t sync_time_pid;
+    if (pthread_create(&sync_time_pid, NULL, sync_time, NULL) != 0) {
+        fprintf(stderr, "Failed to create sync_time thread\n");
+    }
+    usleep(100);
 
     pthread_t http_server_thread;
     if (pthread_create(&http_server_thread, NULL, http_server, NULL) != 0) {
