@@ -226,7 +226,7 @@ void* sync_time(void* arg);
  * @param data [in] The pointer to hexadecimal data stream
  * @param len [in] The length of the byte stream that needs to be output
  */
-void print_data_stream_hex(uint8_t* data, unsigned long len);
+void load_data_stream_hex(uint8_t* data, unsigned long len);
 
 uint8_t* put_byte_stream(uint8_t* stream, uint64_t srcValue, size_t numBytes,
                          uint32_t* offset);
