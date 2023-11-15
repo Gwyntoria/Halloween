@@ -42,7 +42,7 @@ extern "C" {
 #include "ringfifo.h"
 #include "WaInit.h"
 #include "http_server.h"
-// #include "loto_osd.h"
+#include "loto_osd.h"
 
 #define LOTO_DBG(s32Ret)                                                       \
     do {                                                                       \
@@ -68,9 +68,6 @@ HI_U64   a_s_timestamp = 0;
 uint32_t start_time    = 0;
 
 pthread_t  vid = 0, aid = 0;
-static int isopen = 1;
-
-int g_framerate = 0;
 
 static void* gs_rtmp     = NULL;
 static char  APP_VERSION[16];
@@ -78,8 +75,11 @@ static char  gs_push_url_buf[1024] = {0};
 static int   gs_audio_state        = -1;
 static int   gs_audio_encoder      = -1;
 static int   gs_push_algorithm     = -1;
-time_t       program_start_time;
-DeviceInfo   device_info = {0};
+
+DeviceInfo device_info;
+time_t     program_start_time;
+int        g_framerate = 0;
+char       g_device_num[16] = {0};
 
 int stat_count[32] = {0};
 
@@ -227,11 +227,11 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
         goto END_VENC_1HD_3;
     }
 
-    //* snap test
-    // s32Ret = LOTO_COMM_VENC_GetSnapJpg();
-    // if (HI_SUCCESS != s32Ret) {
-    //     LOGE("LOTO_COMM_VENC_GetSnapJpg failed!\n");
-    // }
+    s32Ret = LOTO_OSD_CreateVideoOsdThread();
+    if (s32Ret != HI_SUCCESS) {
+        LOGE("LOTO_OSD_CreateVideoOsdThread failed! \n");
+        return HI_FAILURE;
+    }
 
     /* Audio */
     stAioAttr.enSamplerate   = AUDIO_SAMPLE_RATE_48000;
@@ -705,6 +705,11 @@ void parse_config_file(const char* config_file_path)
     /* Get default push_url */
     strcpy(gs_push_url_buf, GetConfigKeyValue("push", "push_url", config_file_path));
 
+    /* device num */
+    strncpy(g_device_num, GetConfigKeyValue("device", "device_num", config_file_path), 3);
+    strcpy(device_info.device_num, g_device_num);
+    LOGI("device_num = %s\n", g_device_num);
+
     /* If push address should be requested, server address must be set first */
     if (strncmp("on", GetConfigKeyValue("push", "requested_url", config_file_path), 2) == 0) {
         /* Get server token */
@@ -727,14 +732,12 @@ void parse_config_file(const char* config_file_path)
         }
         memset(gs_push_url_buf, 0, sizeof(gs_push_url_buf));
         strcpy(gs_push_url_buf, pRoomInfo->szPushURL);
+
+        memset(g_device_num, 0, sizeof(g_device_num));
+        strcpy(g_device_num, pRoomInfo->szName + 1);
     }
     strcpy(device_info.push_url, gs_push_url_buf);
     LOGI("push_url = %s\n", gs_push_url_buf);
-
-    /* device num */
-    // strncpy(g_device_num, GetConfigKeyValue("device", "device_num",
-    // config_file_path), 3); strcpy(device_info.device_num, g_device_num);
-    // LOGI("device_num = %s\n", g_device_num);
 
     const char* video_encoder = GetConfigKeyValue("push", "video_encoder", config_file_path);
     strcpy(device_info.video_encoder, video_encoder);
@@ -782,8 +785,8 @@ void fill_device_net_info(DeviceInfo* device_info)
 }
 
 #define VER_MAJOR 0
-#define VER_MINOR 4
-#define VER_BUILD 6
+#define VER_MINOR 5
+#define VER_BUILD 0
 
 int main(int argc, char* argv[])
 {

@@ -12,6 +12,7 @@
 #include "common.h"
 
 #include <arpa/inet.h>
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <net/if.h>
@@ -510,7 +511,7 @@ int get_net_time()
             LOGE("select error");
             return -1;
         } else if (ret == 0) {
-            LOGE("timeout, retry.....\n");
+            // LOGE("timeout, retry.....\n");
             retries++;
             continue;
         }
@@ -548,7 +549,7 @@ int get_net_time()
         return -1;
     }
 
-    LOGI("Time from %s: %s", ntp_server, ctime(&unix_time));
+    // LOGI("Time from %s: %s", ntp_server, ctime(&unix_time));
 
     return 0;
 }
