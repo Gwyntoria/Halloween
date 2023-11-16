@@ -43,6 +43,7 @@ extern "C" {
 #include "WaInit.h"
 #include "http_server.h"
 #include "loto_osd.h"
+#include "loto_cover.h"
 
 #define LOTO_DBG(s32Ret)                                                       \
     do {                                                                       \
@@ -76,8 +77,8 @@ static int   gs_audio_state        = -1;
 static int   gs_audio_encoder      = -1;
 static int   gs_push_algorithm     = -1;
 
-DeviceInfo device_info;
-time_t     program_start_time;
+DeviceInfo g_device_info;
+time_t     g_program_start_time;
 int        g_framerate = 0;
 char       g_device_num[16] = {0};
 
@@ -202,11 +203,6 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
     VENC_CHN       snapVencChn = 1;
     PAYLOAD_TYPE_E snapPayLoad = PT_MJPEG;
 
-    // s32Ret = LOTO_COMM_VENC_CreateSnapGroup(snapVencGrp, snapVencChn, enNorm, &stSize);
-    // if (HI_SUCCESS != s32Ret) {
-    //     LOGE("LOTO_COMM_VENC_CreateSnapGroup failed!\n");
-    // }
-
     s32Ret = SAMPLE_COMM_VENC_Start(snapVencGrp, snapVencChn, snapPayLoad, enNorm, PIC_HD720, enRcMode);
     if (HI_SUCCESS != s32Ret) {
         LOGE("Start Venc failed!\n");
@@ -267,7 +263,6 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
     s32Ret = LOTO_AUDIO_CreatTrdAenc(0, &aenc_Pid);
     if (s32Ret != HI_SUCCESS) {
         LOTO_DBG(s32Ret);
-        return HI_FAILURE;
     }
 
     /* Add OSD */
@@ -275,7 +270,12 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
     s32Ret = LOTO_OSD_CreateVideoOsdThread();
     if (s32Ret != HI_SUCCESS) {
         LOGE("LOTO_OSD_CreateVideoOsdThread failed! \n");
-        return HI_FAILURE;
+    }
+
+    usleep(1000 * 10);
+    s32Ret = LOTO_COVER_InitCoverRegion();
+    if (s32Ret != HI_SUCCESS) {
+        LOGE("LOTO_COVER_InitCoverRegion failed! \n");
     }
 
     pthread_join(aenc_Pid, 0);
@@ -395,10 +395,12 @@ void* LOTO_VIDEO_AUDIO_RTMP(void* arg)
             }
         }
 
-        a_ringbuflen = 0;
-        v_ringbuflen = 0;
+        LOTO_COVER_ChangeCover();
 
-        usleep(1000);
+        if (a_ringbuflen == 0 && v_ringbuflen == 0) {
+            usleep(500);
+        }
+
     }
 
 }
@@ -702,7 +704,7 @@ void parse_config_file(const char* config_file_path)
 
     /* device num */
     strncpy(g_device_num, GetConfigKeyValue("device", "device_num", config_file_path), 3);
-    strcpy(device_info.device_num, g_device_num);
+    strcpy(g_device_info.device_num, g_device_num);
 
     /* If push address should be requested, server address must be set first */
     if (strncmp("on", GetConfigKeyValue("push", "requested_url", config_file_path), 2) == 0) {
@@ -715,7 +717,7 @@ void parse_config_file(const char* config_file_path)
         char server_url[1024];
 
         strcpy(server_url, GetConfigKeyValue("push", "server_url", config_file_path));
-        strcpy(device_info.server_url, server_url);
+        strcpy(g_device_info.server_url, server_url);
 
         LOGI("server_url = %s\n", server_url);
 
@@ -731,19 +733,19 @@ void parse_config_file(const char* config_file_path)
         strcpy(g_device_num, pRoomInfo->szName + 1);
     }
 
-    strcpy(device_info.push_url, gs_push_url_buf);
+    strcpy(g_device_info.push_url, gs_push_url_buf);
     LOGI("push_url = %s\n", gs_push_url_buf);
 
-    strcpy(device_info.device_num, g_device_num);
+    strcpy(g_device_info.device_num, g_device_num);
     LOGI("device_num = %s\n", g_device_num);
     
     const char* video_encoder = GetConfigKeyValue("push", "video_encoder", config_file_path);
-    strcpy(device_info.video_encoder, video_encoder);
+    strcpy(g_device_info.video_encoder, video_encoder);
     LOGI("video_encoder = %s\n", video_encoder);
 
     /* audio_state */
     char* audio_state = GetConfigKeyValue("push", "audio_state", config_file_path);
-    strcpy(device_info.audio_state, audio_state);
+    strcpy(g_device_info.audio_state, audio_state);
     if (strncmp("off", audio_state, 3) == 0) {
         gs_audio_state = HI_FALSE;
     } else if (strncmp("on", audio_state, 2) == 0) {
@@ -751,7 +753,7 @@ void parse_config_file(const char* config_file_path)
 
         /* audio_encoder */
         const char* audio_encoder = GetConfigKeyValue("push", "audio_encoder", config_file_path);
-        strcpy(device_info.audio_encoder, audio_encoder);
+        strcpy(g_device_info.audio_encoder, audio_encoder);
         LOGI("audio_encoder = %s\n", audio_encoder);
 
         if (strncmp("aac", audio_encoder, 3) == 0) {
@@ -783,7 +785,7 @@ void fill_device_net_info(DeviceInfo* device_info)
 }
 
 #define VER_MAJOR 0
-#define VER_MINOR 5
+#define VER_MINOR 6
 #define VER_BUILD 2
 
 int main(int argc, char* argv[])
@@ -815,16 +817,16 @@ int main(int argc, char* argv[])
     }
 
     /* Gets the program startup time */
-    program_start_time = time(NULL);
-    strcpy(device_info.start_time, GetTimestampString());
+    g_program_start_time = time(NULL);
+    strcpy(g_device_info.start_time, GetTimestampString());
 
     sprintf(APP_VERSION, "%d.%d.%d", VER_MAJOR, VER_MINOR, VER_BUILD);
-    strcpy(device_info.app_version, APP_VERSION);
+    strcpy(g_device_info.app_version, APP_VERSION);
     LOGI("402 ENCODER: RTMP App Version: %s\n", APP_VERSION);
 
     /* get global variables from config file */
     parse_config_file(config_file_path);
-    fill_device_net_info(&device_info);
+    fill_device_net_info(&g_device_info);
 
     ringmalloc(500 * 1024);
     ringmalloc_audio(1024 * 5);

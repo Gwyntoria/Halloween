@@ -321,6 +321,27 @@ HI_S32 LOTO_COMM_VENC_GetSnapJpg(char* jpg, int* jpg_size) {
     return HI_SUCCESS;
 }
 
+
+HI_S32 LOTO_VENC_SetVencBitrate(HI_S32 dstBitrate) {
+    HI_S32 ret = 0;
+    VENC_CHN_ATTR_S stVencChnAttr = {0};
+
+    if ((ret = HI_MPI_VENC_GetChnAttr(0, &stVencChnAttr)) != HI_SUCCESS) {
+        LOGE("HI_MPI_VENC_GetChnAttr failed with %#x\n", ret);
+        return HI_FAILURE;
+    }
+
+    stVencChnAttr.stRcAttr.stAttrH264Vbr.u32MaxBitRate = dstBitrate;
+
+    if ((ret = HI_MPI_VENC_SetChnAttr(0, &stVencChnAttr)) != HI_SUCCESS) {
+        LOGE("HI_MPI_VENC_SetChnAttr failed with %#x\n", ret);
+        return HI_FAILURE;
+    }
+
+    return HI_SUCCESS;
+}
+
+
 #ifdef __cplusplus
 #if __cplusplus
 }

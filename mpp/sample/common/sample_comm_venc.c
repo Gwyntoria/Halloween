@@ -29,7 +29,7 @@ extern "C"{
 #include <signal.h>
 
 #include "sample_comm.h"
-#include "ringfifo.h"
+#include "../LOTO_RTMP/ringfifo.h"
 #include "../LOTO_RTMP/common.h"
  
 const HI_U8 g_SOI[2] = {0xFF, 0xD8};

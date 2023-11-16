@@ -442,15 +442,13 @@ char *decode(char *message, const char *codeckey)
 
 #define NTP_PORT        123
 #define NTP_PACKET_SIZE 48
-#define NTP_UNIX_OFFSET 2208988800
+#define NTP_UNIX_OFFSET 2208988800U
 #define RESEND_INTERVAL 3
 #define MAX_RETRIES     10
 #define TIMEOUT_SEC     3
 
 int get_net_time()
 {
-    char *ntp_server = "ntp1.aliyun.com";
-
     int sock_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock_fd == -1) {
         LOGE("create socket failed\n");
@@ -462,6 +460,8 @@ int get_net_time()
     fcntl(sock_fd, F_SETFL, flags | O_NONBLOCK);
 
     // LOGI("create udp_socket success!\n");
+
+    char *ntp_server = "ntp1.aliyun.com";
 
     struct hostent *server = gethostbyname(ntp_server);
     if (server == NULL) {
@@ -491,9 +491,11 @@ int get_net_time()
 
     while (retries < MAX_RETRIES) {
         ssize_t bytes_sent = sendto(sock_fd, ntp_packet, sizeof(ntp_packet), 0, (struct sockaddr *)&server_addr, addr_len);
-        if (bytes_sent < 0) {
+        if (bytes_sent <= 0) {
             LOGE("sendto failed\n");
-            break;
+            sleep(1);
+            retries++;
+            continue;
         }
 
         fd_set read_fds;
@@ -518,7 +520,7 @@ int get_net_time()
 
         memset(ntp_response, 0, sizeof(ntp_response));
         ssize_t bytes_received = recvfrom(sock_fd, ntp_response, sizeof(ntp_response), 0, (struct sockaddr *)&server_addr, &addr_len);
-        if (bytes_received < 0) {
+        if (bytes_received <= 0) {
             if (errno == EINTR) {
                 LOGE("No data available; retrying...\n");
                 retries++;
