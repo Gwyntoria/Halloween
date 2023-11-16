@@ -278,6 +278,11 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
         LOGE("LOTO_COVER_InitCoverRegion failed! \n");
     }
 
+    sleep(1);
+    if (g_device_info.video_state == COVER_ON) {
+        LOTO_COVER_Switch(COVER_ON);
+    }
+
     pthread_join(aenc_Pid, 0);
     LOTO_AUDIO_DestoryTrdAenc(AeChn);
 
@@ -743,6 +748,12 @@ void parse_config_file(const char* config_file_path)
     strcpy(g_device_info.video_encoder, video_encoder);
     LOGI("video_encoder = %s\n", video_encoder);
 
+    if (strncmp("off", GetConfigKeyValue("push", "video_state", config_file_path), 3) == 0) {
+        g_device_info.video_state = COVER_ON;
+    } else {
+        g_device_info.video_state = COVER_OFF;
+    }
+
     /* audio_state */
     char* audio_state = GetConfigKeyValue("push", "audio_state", config_file_path);
     strcpy(g_device_info.audio_state, audio_state);
@@ -786,7 +797,7 @@ void fill_device_net_info(DeviceInfo* device_info)
 
 #define VER_MAJOR 0
 #define VER_MINOR 6
-#define VER_BUILD 2
+#define VER_BUILD 3
 
 int main(int argc, char* argv[])
 {
@@ -815,6 +826,8 @@ int main(int argc, char* argv[])
         LOGE("Time sync failed\n");
         // exit(1);
     }
+
+    memset(&g_device_info, 0, sizeof(g_device_info));
 
     /* Gets the program startup time */
     g_program_start_time = time(NULL);
