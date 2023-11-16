@@ -83,7 +83,8 @@ char* GetConfigKeyValue(const char* title, const char* key, const char* filename
     }
     fclose(fp);
     printf("get title failed!\n");
-    exit(1);
+    
+    return NULL;
 }
 
 int GetIniKeyInt(const char* title, const char* key, const char* filename)
