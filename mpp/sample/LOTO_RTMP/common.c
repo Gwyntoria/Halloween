@@ -444,8 +444,8 @@ char *decode(char *message, const char *codeckey)
 #define NTP_PACKET_SIZE 48
 #define NTP_UNIX_OFFSET 2208988800
 #define RESEND_INTERVAL 3
-#define MAX_RETRIES     5
-#define TIMEOUT_SEC     5
+#define MAX_RETRIES     10
+#define TIMEOUT_SEC     3
 
 int get_net_time()
 {
