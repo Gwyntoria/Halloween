@@ -360,10 +360,20 @@ HI_S32 LOTO_OSD_GetBmpBuffer() {
     HI_U16 bmpWidth;  // bitmap width
     HI_U16 bmpHeight; // bitmap height
 
-    const char* fileName[] = {"./res/0.bmp", "./res/1.bmp",  "./res/2.bmp",
-                              "./res/3.bmp", "./res/4.bmp",  "./res/5.bmp",
-                              "./res/6.bmp", "./res/7.bmp",  "./res/8.bmp",
-                              "./res/9.bmp", "./res/10.bmp", "./res/11.bmp"};
+    const char* fileName[] = {
+        "/root/WaController/res/0.bmp",  
+        "/root/WaController/res/1.bmp",
+        "/root/WaController/res/2.bmp",  
+        "/root/WaController/res/3.bmp",
+        "/root/WaController/res/4.bmp",  
+        "/root/WaController/res/5.bmp",
+        "/root/WaController/res/6.bmp",  
+        "/root/WaController/res/7.bmp",
+        "/root/WaController/res/8.bmp",  
+        "/root/WaController/res/9.bmp",
+        "/root/WaController/res/10.bmp", 
+        "/root/WaController/res/11.bmp"
+    };
 
     HI_U8* bmpBufferTem;
 
@@ -377,7 +387,7 @@ HI_S32 LOTO_OSD_GetBmpBuffer() {
         if (LOTO_OSD_GetBmpInfo(*(fileName + f), gs_bmpFileHeader + f,
                                 gs_bmpInfo + f) < 0) {
             return -1;
-        };
+        }
     }
 
     /* 打开BMP文件 */
@@ -921,10 +931,13 @@ HI_S32 LOTO_OSD_CreateVideoOsdThread(HI_VOID) {
         return HI_FAILURE;
     }
 
-    s32Ret = LOTO_OSD_GetBmpBuffer();
-    if (s32Ret != HI_SUCCESS) {
-        LOGE("LOTO_OSD_GetBmpBuffer error!\n");
-    }
+    do {
+        s32Ret = LOTO_OSD_GetBmpBuffer();
+        if (s32Ret != HI_SUCCESS) {
+            LOGE("LOTO_OSD_GetBmpBuffer error!\n");
+            return HI_FAILURE;
+        }
+    } while (s32Ret);
 
     pthread_t osd_thread_id = 0;
     pthread_create(&osd_thread_id, NULL, LOTO_OSD_AddVideoOsd, handle_info);

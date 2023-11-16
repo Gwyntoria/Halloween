@@ -227,12 +227,6 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
         goto END_VENC_1HD_3;
     }
 
-    s32Ret = LOTO_OSD_CreateVideoOsdThread();
-    if (s32Ret != HI_SUCCESS) {
-        LOGE("LOTO_OSD_CreateVideoOsdThread failed! \n");
-        return HI_FAILURE;
-    }
-
     /* Audio */
     stAioAttr.enSamplerate   = AUDIO_SAMPLE_RATE_48000;
     stAioAttr.enBitwidth     = AUDIO_BIT_WIDTH_16;
@@ -277,11 +271,12 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
     }
 
     /* Add OSD */
-    // s32Ret = LOTO_OSD_CreateVideoOsdThread();
-    // if (s32Ret != HI_SUCCESS) {
-    //     LOGE("LOTO_OSD_CreateVideoOsdThread failed! \n");
-    //     return HI_FAILURE;
-    // }
+    sleep(2);
+    s32Ret = LOTO_OSD_CreateVideoOsdThread();
+    if (s32Ret != HI_SUCCESS) {
+        LOGE("LOTO_OSD_CreateVideoOsdThread failed! \n");
+        return HI_FAILURE;
+    }
 
     pthread_join(aenc_Pid, 0);
     LOTO_AUDIO_DestoryTrdAenc(AeChn);
@@ -708,7 +703,6 @@ void parse_config_file(const char* config_file_path)
     /* device num */
     strncpy(g_device_num, GetConfigKeyValue("device", "device_num", config_file_path), 3);
     strcpy(device_info.device_num, g_device_num);
-    LOGI("device_num = %s\n", g_device_num);
 
     /* If push address should be requested, server address must be set first */
     if (strncmp("on", GetConfigKeyValue("push", "requested_url", config_file_path), 2) == 0) {
@@ -736,9 +730,13 @@ void parse_config_file(const char* config_file_path)
         memset(g_device_num, 0, sizeof(g_device_num));
         strcpy(g_device_num, pRoomInfo->szName + 1);
     }
+
     strcpy(device_info.push_url, gs_push_url_buf);
     LOGI("push_url = %s\n", gs_push_url_buf);
 
+    strcpy(device_info.device_num, g_device_num);
+    LOGI("device_num = %s\n", g_device_num);
+    
     const char* video_encoder = GetConfigKeyValue("push", "video_encoder", config_file_path);
     strcpy(device_info.video_encoder, video_encoder);
     LOGI("video_encoder = %s\n", video_encoder);
@@ -786,7 +784,7 @@ void fill_device_net_info(DeviceInfo* device_info)
 
 #define VER_MAJOR 0
 #define VER_MINOR 5
-#define VER_BUILD 0
+#define VER_BUILD 1
 
 int main(int argc, char* argv[])
 {
