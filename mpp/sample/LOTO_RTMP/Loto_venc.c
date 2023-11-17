@@ -49,8 +49,8 @@ static SAMPLE_VENC_GETSTREAM_PARA_S gs_stPara;
 
 static char packBuffer[1024 * 500] = {0};
 
-static Cache cache_1 = {0};
-static Cache cache_2 = {0};
+static Cache cache_1;
+static Cache cache_2;
 
 
 HI_S32 LOTO_VENC_WriteMJpeg(VENC_STREAM_S* pstStream) {
@@ -152,9 +152,6 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID* p) {
     struct timeval                TimeoutVal;
     fd_set                        read_fds;
     HI_S32                        VencFd[VENC_MAX_CHN_NUM];
-    HI_CHAR                       aszFileName[VENC_MAX_CHN_NUM][64];
-    FILE*                         pFile[VENC_MAX_CHN_NUM];
-    char                          szFilePostfix[10];
     VENC_CHN_STAT_S               stStat;
     VENC_STREAM_S                 stStream;
     HI_S32                        s32Ret;
@@ -172,7 +169,7 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID* p) {
     }
 
     for (i = 0; i < s32ChnTotal; i++) {
-        VENC_CHN VencChn = i;
+        VencChn = i;
 
         /* Set Venc Fd. */
         VencFd[i] = HI_MPI_VENC_GetFd(VencChn);
@@ -207,7 +204,7 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID* p) {
             continue;
         } else {
             for (i = 0; i < s32ChnTotal; i++) {
-                VENC_CHN VencChn = i;
+                VencChn = i;
 
                 if (FD_ISSET(VencFd[i], &read_fds)) {
                     /*******************************************************
@@ -324,7 +321,9 @@ HI_S32 LOTO_COMM_VENC_GetSnapJpg(char* jpg, int* jpg_size) {
 
 HI_S32 LOTO_VENC_SetVencBitrate(HI_S32 dstBitrate) {
     HI_S32 ret = 0;
-    VENC_CHN_ATTR_S stVencChnAttr = {0};
+    VENC_CHN_ATTR_S stVencChnAttr;
+
+    memset(&stVencChnAttr, 0, sizeof(VENC_CHN_ATTR_S));
 
     if ((ret = HI_MPI_VENC_GetChnAttr(0, &stVencChnAttr)) != HI_SUCCESS) {
         LOGE("HI_MPI_VENC_GetChnAttr failed with %#x\n", ret);
@@ -351,7 +350,9 @@ HI_S32 LOTO_VENC_SetVencBitrate(HI_S32 dstBitrate) {
 
 HI_S32 LOTO_VENC_LowBitrateMode(CONTROLLER_COVER_STATE cover_state) {
     HI_S32 ret = 0;
-    VENC_CHN_ATTR_S stVencChnAttr = {0};
+    VENC_CHN_ATTR_S stVencChnAttr;
+
+    memset(&stVencChnAttr, 0, sizeof(VENC_CHN_ATTR_S));
 
     if ((ret = HI_MPI_VENC_GetChnAttr(0, &stVencChnAttr)) != HI_SUCCESS) {
         LOGE("HI_MPI_VENC_GetChnAttr failed with %#x\n", ret);

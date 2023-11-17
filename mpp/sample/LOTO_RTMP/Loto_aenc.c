@@ -39,25 +39,16 @@ extern "C" {
 #define AAC_ENC_FRAME_SIZE    (1024)
 #define AAC_ENC_BITRATE       (48000)
 
-typedef struct tagLOTO_AENC_S
-{
-    HI_BOOL bStart;
+#define SAMPLE_AUDIO_PTNUMPERFRM (1024)
+#define SAMPLE_AUDIO_AI_DEV      (0)
+
+typedef struct tagLOTO_AENC_S {
+    HI_BOOL   bStart;
     pthread_t stAencPid;
-    HI_S32  AeChn;
+    HI_S32    AeChn;
 } LOTO_AENC_S;
 
-// typedef struct tagLOTO_AI_S
-// {
-//     HI_BOOL bStart;
-//     pthread_t stAiPid;
-//     HI_S32  AiChn;
-// } LOTO_AI_S;
-
 static LOTO_AENC_S gs_stLotoAenc[AENC_MAX_CHN_NUM];
-// static LOTO_AI_S gs_stLotoAi[AIO_MAX_CHN_NUM];
-
-#define SAMPLE_AUDIO_PTNUMPERFRM   1024
-#define SAMPLE_AUDIO_AI_DEV 0
 
 /******************************************************************************
 * function : get stream from Aenc, send it  to ringfifo
@@ -66,21 +57,17 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
 {
     HI_S32 s32Ret;
     HI_S32 AencFd[2];
-    AENC_CHN AencChn;
     HI_S32 maxfd = 0;
-    int i = 0, k = 0;
-    FILE *pfd[2];
+    int    i = 0, k = 0;
 
-    LOTO_AENC_S* pstAencCtl = (LOTO_AENC_S*)parg;
+    LOTO_AENC_S*   pstAencCtl = (LOTO_AENC_S*)parg;
     AUDIO_STREAM_S stStream;
-    fd_set read_fds;
+    fd_set         read_fds;
     struct timeval TimeoutVal;
 
-    HI_U64 u64TimeStamp  = 0;
     HI_U64 lastTimeStamp = 0;
 
-    HANDLE_AACENCODER   g_Enc_H = NULL;
-    AACENC_PARAM        aacenc_param;
+    HANDLE_AACENCODER g_Enc_H = NULL;
 
     int aac_enc_chn = AAC_ENC_CHANNAL_COUNT;
 
@@ -247,24 +234,10 @@ void* LOTO_COMM_AUDIO_AencProc(void* parg)
                     return NULL;
                 }
 
-                // printf("%s: aenc stream[%d] length: %d \n", __FUNCTION__, i, stStream.u32Len);
-
-                // if (n_count == 0 || n_count == 3000)
-                // {
-                //     LOGD("[%s] LOTO_COMM_AUDIO_AencProc:  timestamp = %"PRIu64"", log_Time(), stStream.u64TimeStamp/1000);
-                //     n_count = 0;
-                // }
-                // n_count ++;
-
-                // if (i == 0)
-                // {
-                    // memcpy(streamBuf+u32Len, stStream.pStream, stStream.u32Len);
-
-                    for (k = 0; k < stStream.u32Len; k += 2)
-                    {
-                        inbuf[st] = (stStream.pStream[k]) | stStream.pStream[k + 1] << 8;
-                        st += aac_enc_chn;
-                    }
+                for (k = 0; k < stStream.u32Len; k += 2) {
+                    inbuf[st] = (stStream.pStream[k]) | stStream.pStream[k + 1] << 8;
+                    st += aac_enc_chn;
+                }
 
                 HI_MPI_AENC_ReleaseStream(i, &stStream);                
             }

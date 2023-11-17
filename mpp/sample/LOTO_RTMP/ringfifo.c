@@ -184,10 +184,11 @@ void ringput(unsigned char *buffer,int size,int encode_type)
 **************************************************************************************************/
 HI_S32 HisiPutH264DataToBuffer(VENC_STREAM_S *pstStream)
 {
-	HI_S32 i,j;
-	HI_S32 len=0,off=0,len2=2;
-	unsigned char *pstr;
-	int iframe=0;
+    HI_S32         i      = 0;
+    HI_S32         len    = 0;
+    HI_S32         off    = 0;
+    int            iframe = 0;
+    unsigned char* pstr;
 
     // printf("HisiPutH264DataToBuffer: count = %d \n ", pstStream->u32PackCount);
 

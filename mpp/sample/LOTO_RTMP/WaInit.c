@@ -267,9 +267,9 @@ loto_room_info* loto_room_init(const char* server_url, const char* server_token)
         {
             char szMac[256] = "";
             char szPostBody[512] = "";
-            char szCodecKey[64] = "";
+            // char szCodecKey[64] = "";
             char szT[64] = "";
-            struct timeval tv;
+            // struct timeval tv;
             int hash_code = 0;
             int i = 0;
 
