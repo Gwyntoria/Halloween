@@ -272,11 +272,11 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
         LOGE("LOTO_OSD_CreateVideoOsdThread failed! \n");
     }
 
-    usleep(1000 * 10);
-    s32Ret = LOTO_COVER_InitCoverRegion();
-    if (s32Ret != HI_SUCCESS) {
-        LOGE("LOTO_COVER_InitCoverRegion failed! \n");
-    }
+    // usleep(1000 * 10);
+    // s32Ret = LOTO_COVER_InitCoverRegion();
+    // if (s32Ret != HI_SUCCESS) {
+    //     LOGE("LOTO_COVER_InitCoverRegion failed! \n");
+    // }
 
     sleep(1);
     if (g_device_info.video_state == COVER_ON) {
@@ -797,7 +797,7 @@ void fill_device_net_info(DeviceInfo* device_info)
 
 #define VER_MAJOR 0
 #define VER_MINOR 7
-#define VER_BUILD 0
+#define VER_BUILD 1
 
 int main(int argc, char* argv[])
 {
