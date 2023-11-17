@@ -850,7 +850,7 @@ int accept_request(int client)
 
             // LOGD("total_len:    %zu\n\n", total_len);
 
-            usleep(1000 * 20);
+            usleep(1000 * 500);
 
         } else {
             char response_content[128] = {0};

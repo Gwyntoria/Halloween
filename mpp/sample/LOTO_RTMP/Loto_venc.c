@@ -27,31 +27,31 @@ extern "C" {
 #include <string.h>
 #include <unistd.h>
 
-
 #include "common.h"
 #include "ringfifo.h"
 #include "sample_comm.h"
-
+#include "http_server.h"
 
 typedef struct Cache {
     char data[1024 * 500];
     int  data_len;
 } Cache;
 
-static pthread_t                    gs_VencPid;
-static SAMPLE_VENC_GETSTREAM_PARA_S gs_stPara;
+extern int is_rtmp_write;
+extern int g_framerate;
 
 int gs_snap_group_status = 0;
+int cur_write_buffer     = 0;
+int is_writing           = 0;
 
-extern int is_rtmp_write;
+static pthread_t                    gs_VencPid;
+static SAMPLE_VENC_GETSTREAM_PARA_S gs_stPara;
 
 static char packBuffer[1024 * 500] = {0};
 
 static Cache cache_1 = {0};
 static Cache cache_2 = {0};
 
-int cur_write_buffer = 0;
-int is_writing       = 0;
 
 HI_S32 LOTO_VENC_WriteMJpeg(VENC_STREAM_S* pstStream) {
     VENC_PACK_S* pstData     = NULL;
@@ -331,7 +331,55 @@ HI_S32 LOTO_VENC_SetVencBitrate(HI_S32 dstBitrate) {
         return HI_FAILURE;
     }
 
-    stVencChnAttr.stRcAttr.stAttrH264Vbr.u32MaxBitRate = dstBitrate;
+    if (PT_H264 == stVencChnAttr.stVeAttr.enType) {
+        if (VENC_RC_MODE_H264VBR == stVencChnAttr.stRcAttr.enRcMode) {
+            stVencChnAttr.stRcAttr.stAttrH264Vbr.u32MaxBitRate = dstBitrate;
+        }
+    } else {
+        LOGE("the type of payload is not supported!\n");
+        return HI_FAILURE;
+    }
+
+
+    if ((ret = HI_MPI_VENC_SetChnAttr(0, &stVencChnAttr)) != HI_SUCCESS) {
+        LOGE("HI_MPI_VENC_SetChnAttr failed with %#x\n", ret);
+        return HI_FAILURE;
+    }
+
+    return HI_SUCCESS;
+}
+
+HI_S32 LOTO_VENC_LowBitrateMode(CONTROLLER_COVER_STATE cover_state) {
+    HI_S32 ret = 0;
+    VENC_CHN_ATTR_S stVencChnAttr = {0};
+
+    if ((ret = HI_MPI_VENC_GetChnAttr(0, &stVencChnAttr)) != HI_SUCCESS) {
+        LOGE("HI_MPI_VENC_GetChnAttr failed with %#x\n", ret);
+        return HI_FAILURE;
+    }
+
+    if (cover_state == COVER_ON) {
+        if (PT_H264 == stVencChnAttr.stVeAttr.enType) {
+            if (VENC_RC_MODE_H264VBR == stVencChnAttr.stRcAttr.enRcMode) {
+                stVencChnAttr.stRcAttr.stAttrH264Vbr.fr32TargetFrmRate = 1;
+                stVencChnAttr.stRcAttr.stAttrH264Vbr.u32MaxBitRate     = 8;
+            }
+        } else {
+            LOGE("the type of payload is not supported!\n");
+            return HI_FAILURE;
+        }
+
+    } else if (cover_state == COVER_OFF) {
+        if (PT_H264 == stVencChnAttr.stVeAttr.enType) {
+            if (VENC_RC_MODE_H264VBR == stVencChnAttr.stRcAttr.enRcMode) {
+                stVencChnAttr.stRcAttr.stAttrH264Vbr.fr32TargetFrmRate = g_framerate;
+                stVencChnAttr.stRcAttr.stAttrH264Vbr.u32MaxBitRate = 1024 * 4;
+            }
+        } else {
+            LOGE("the type of payload is not supported!\n");
+            return HI_FAILURE;
+        }
+    }
 
     if ((ret = HI_MPI_VENC_SetChnAttr(0, &stVencChnAttr)) != HI_SUCCESS) {
         LOGE("HI_MPI_VENC_SetChnAttr failed with %#x\n", ret);
