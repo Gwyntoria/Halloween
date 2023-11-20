@@ -838,8 +838,20 @@ int accept_request(int client)
                 memcpy(buf, jpg_buf + total_len, len);
 
                 ssize_t send_len = send(client, buf, len, MSG_NOSIGNAL);
-                if (send_len <= 0) {
+                if (send_len < 0) {
                     LOGD("send jpg error\n");
+
+                    if (errno == ECONNRESET) {
+                        LOGE("client terminated the connection\n");
+                        break;
+                    } else if (errno == EINTR) {
+                        LOGE("send interrupted\n");
+                        break;
+                    } else {
+                        break;
+                    }
+                } else if (send_len == 0) {
+                    LOGE("connection closed\n");
                     break;
                 }
                 // usleep(20);
