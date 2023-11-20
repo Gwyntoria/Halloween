@@ -128,8 +128,8 @@ HI_S32 LOTO_COVER_ChangeCover() {
     }
 
     if (gs_cover_state == COVER_ON) {
-        // if (LOTO_COVER_AddCover() != 0) {
-        if (LOTO_VENC_LowBitrateMode(COVER_ON) != HI_SUCCESS) {
+        if (LOTO_COVER_AddCover() != 0) {
+        // if (LOTO_VENC_LowBitrateMode(COVER_ON) != HI_SUCCESS) {
             LOGE("LOTO_COVER_AddCover failed!\n");
             gs_cover_state = COVER_OFF;
             gs_cover_switch = 0;
@@ -140,8 +140,8 @@ HI_S32 LOTO_COVER_ChangeCover() {
         PutConfigKeyValue("push", "video_state", "off", PUSH_CONFIG_FILE_PATH);
 
     } else if (gs_cover_state == COVER_OFF) {
-        // if (LOTO_COVER_RemoveCover() != 0) {
-        if (LOTO_VENC_LowBitrateMode(COVER_OFF) != HI_SUCCESS) {
+        if (LOTO_COVER_RemoveCover() != 0) {
+        // if (LOTO_VENC_LowBitrateMode(COVER_OFF) != HI_SUCCESS) {
             LOGE("LOTO_COVER_RemoveCover failed!\n");
             gs_cover_state = COVER_ON;
             gs_cover_switch = 0;
