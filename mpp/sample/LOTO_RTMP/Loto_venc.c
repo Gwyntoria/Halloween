@@ -363,7 +363,7 @@ HI_S32 LOTO_VENC_LowBitrateMode(CONTROLLER_COVER_STATE cover_state) {
         if (PT_H264 == stVencChnAttr.stVeAttr.enType) {
             if (VENC_RC_MODE_H264VBR == stVencChnAttr.stRcAttr.enRcMode) {
                 stVencChnAttr.stRcAttr.stAttrH264Vbr.fr32TargetFrmRate = 1;
-                stVencChnAttr.stRcAttr.stAttrH264Vbr.u32MaxBitRate     = 32;
+                stVencChnAttr.stRcAttr.stAttrH264Vbr.u32MaxBitRate     = 64;
             }
         } else {
             LOGE("the type of payload is not supported!\n");
