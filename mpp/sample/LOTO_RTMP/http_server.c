@@ -772,16 +772,7 @@ int accept_request(int client)
     }
     // 以上将 request_line 解析完毕
 
-    if (strcasecmp(path, "/hello") == 0) {
-        char hello_content[32] = "Hello world!\r\n";
-        if (send_plain_response(client, hello_content) != 0) {
-            LOGE("send error\n");
-            return -1;
-        }
-        // } else if (strcasecmp(path, "/html") == 0) {
-        //     if (send_html_response(client, HTML_FILE_PATH) != 0)
-        //         LOGE("send error\n");
-    } else if (strcasecmp(path, "/set_params") == 0) {
+    if (strcasecmp(path, "/set_params") == 0) {
         LOGD("url: %s\n", url);
 
         char content[1024] = {0};
@@ -804,6 +795,8 @@ int accept_request(int client)
         }
 
     } else if (strcasecmp(path, "/reboot") == 0) {
+        LOGD("url: %s\n", url);
+
         char content[1024] = {0};
         sprintf(content, "Start rebooting\r\n");
 
@@ -816,7 +809,7 @@ int accept_request(int client)
 
         if (gs_reboot_switch) {
             gs_reboot_switch = 0;
-            LOGI("Start rebooting\n");
+            // LOGI("Start rebooting\n");
             reboot_system();
         }
 
@@ -877,6 +870,8 @@ int accept_request(int client)
         }
 
     } else if ((strcmp(path, "/") == 0) || (strcasecmp(path, "/home") == 0)) {
+        LOGD("url: %s\n", url);
+
         char device_info_content[4096] = {0};
         get_device_info(device_info_content);
 #if DEBUG_HTTP
@@ -972,7 +967,7 @@ void thread_accept_request(void *param) {
         if (socket != 0) {
             socket_tail++;
             accept_request(socket);
-            usleep(1000 * 200);
+            usleep(500);
             close(socket);
         } else {
             usleep(1000);
@@ -1021,11 +1016,12 @@ void *http_server(void *arg)
         } else {
             // printf("HTTP client connected.\n");
         }
-        // try_accept_request(client_sock);
+        
+        try_accept_request(client_sock);
 
-        accept_request(client_sock);
-        usleep(500);
-        close(client_sock);
+        // accept_request(client_sock);
+        // usleep(500);
+        // close(client_sock);
     }
 
     close(server_sock);

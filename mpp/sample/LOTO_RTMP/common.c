@@ -37,7 +37,7 @@
 #define LOG_AVCTL_FILE "avctl_log"
 #define LOG_RTMP_FILE  "rtmp_log"
 #define MAX_FILE_SIZE  (5 * 1024 * 1024)
-#define MAX_FILE_COUNT 3
+#define MAX_FILE_COUNT 2
 
 static FILE           *log_handle = NULL;
 static pthread_mutex_t _vLogMutex;
