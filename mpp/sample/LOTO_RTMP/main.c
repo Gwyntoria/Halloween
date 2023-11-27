@@ -797,7 +797,7 @@ void fill_device_net_info(DeviceInfo* device_info)
 
 #define VER_MAJOR 0
 #define VER_MINOR 7
-#define VER_BUILD 7
+#define VER_BUILD 8
 
 int main(int argc, char* argv[])
 {
@@ -873,6 +873,9 @@ int main(int argc, char* argv[])
     }
 
     LOTO_RTMP_VA_CLASSIC();
+
+    pthread_join(http_server_thread, 0);
+    LOGE("http server interrupted!\n");
 
     pthread_join(rtmp_pid, 0);
     

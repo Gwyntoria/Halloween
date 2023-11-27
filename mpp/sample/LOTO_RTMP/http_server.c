@@ -54,7 +54,7 @@ typedef struct KeyValuePair {
     char* value;
 } KeyValuePair;
 
-static int gs_reboot_switch = 0;
+static int s_reboot_switch = 0;
 
 extern time_t     g_program_start_time;
 extern DeviceInfo g_device_info;
@@ -439,7 +439,7 @@ int deal_query_string(char *query_string, char *content)
                         strcat(content, temp);
                         temp[0] = '\0';
 
-                        gs_reboot_switch = 1;
+                        s_reboot_switch = 1;
 
                     } else {
                         LOGI("remain the setting of server_url\n");
@@ -457,7 +457,7 @@ int deal_query_string(char *query_string, char *content)
                         strcat(content, temp);
                         temp[0] = '\0';
 
-                        gs_reboot_switch = 1;
+                        s_reboot_switch = 1;
 
                     } else {
                         LOGI("remain the setting of server_url\n");
@@ -788,8 +788,8 @@ int accept_request(int client)
             return -1;
         }
 
-        if (gs_reboot_switch) {
-            gs_reboot_switch = 0;
+        if (s_reboot_switch) {
+            s_reboot_switch = 0;
             LOGI("start rebooting\n");
             reboot_system();
         }
@@ -800,20 +800,22 @@ int accept_request(int client)
         char content[1024] = {0};
         sprintf(content, "Start rebooting\r\n");
 
-        gs_reboot_switch = 1;
+        s_reboot_switch = 1;
 
         if (send_plain_response(client, content) != 0) {
             LOGE("send device_info error\n");
             return -1;
         }
 
-        if (gs_reboot_switch) {
-            gs_reboot_switch = 0;
+        if (s_reboot_switch) {
+            s_reboot_switch = 0;
             // LOGI("Start rebooting\n");
             reboot_system();
         }
 
     } else if (strcmp(path, "/1.jpg") == 0) {
+        LOGD("url: %s\n", url);
+
         char jpg_buf[1024 * 500] = {0};
         int  jpg_size            = 0;
 
@@ -954,7 +956,7 @@ pthread_t accept_thread    = 0;
 int       accept_thread_id = 0;
 
 int socket_max  = 10;
-int sockets[10] = {0};
+int sockets[10] = {-1};
 int socket_head = 0;
 int socket_tail = 0;
 
@@ -988,6 +990,8 @@ void try_accept_request(int socket) {
     }
 
     if (socket_tail + socket_max == socket_head) {
+        LOGI("sock buff was filled\n");
+        LOGI("close sock[%d]\n", socket);
         close(socket);
     } else {
         sockets[socket_head % socket_max] = socket;
