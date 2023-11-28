@@ -283,6 +283,7 @@ HI_S32 LOTO_RTMP_VA_CLASSIC()
         LOTO_COVER_Switch(COVER_ON);
     }
 
+    // 等待推流结束
     pthread_join(aenc_Pid, 0);
     LOTO_AUDIO_DestoryTrdAenc(AeChn);
 
@@ -796,8 +797,8 @@ void fill_device_net_info(DeviceInfo* device_info)
 }
 
 #define VER_MAJOR 0
-#define VER_MINOR 7
-#define VER_BUILD 8
+#define VER_MINOR 8
+#define VER_BUILD 2
 
 int main(int argc, char* argv[])
 {

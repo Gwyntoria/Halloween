@@ -24,7 +24,8 @@
 
 #define DEBUG_HTTP 0
 
-#define MAX_PENDING           10
+#define MAX_CLIENTS           10
+#define MAX_PENDING           5
 #define MAX_RESPONSE_SIZE     5120
 #define MAX_HTML_CONTENT_SIZE 4096
 
@@ -53,6 +54,14 @@ typedef struct KeyValuePair {
     char* key;
     char* value;
 } KeyValuePair;
+
+pthread_t accept_thread    = 0;
+int       accept_thread_id = 0;
+
+int socket_max  = MAX_CLIENTS;
+int client_sockets[MAX_CLIENTS] = {-1};
+int socket_head = 0;
+int socket_tail = 0;
 
 static int s_reboot_switch = 0;
 
@@ -99,8 +108,7 @@ int get_request_line(int sock, char *buf, int size)
 
                 // 读取到回车换行
                 if ((n > 0) && (c == '\n'))
-                    recv(sock, &c, 1,
-                         0); // 还需要读取，因为之前一次的读取，相当于没有读取
+                    recv(sock, &c, 1, 0); // 还需要读取，因为之前一次的读取，相当于没有读取
                 else
                     c = '\n'; // 如果只读取到\r，也要终止读取
             }
@@ -688,7 +696,7 @@ void get_device_info(char *device_info_content)
     // write_html_file(device_info_html, DEVICE_FILE_PATH);
 }
 
-void handle_request(int client_socket, char* buf, int buf_size, int* header_size) {
+int handle_request(int client_socket, char* buf, int buf_size, int* header_size) {
     ssize_t bytes_received;
     char*   request_header = NULL;
 
@@ -696,7 +704,7 @@ void handle_request(int client_socket, char* buf, int buf_size, int* header_size
         // Append the received data to the request header
         char* new_header = (char*)realloc(request_header, *header_size + bytes_received + 1);
         if (new_header == NULL) {
-            fprintf(stderr, "Memory allocation error\n");
+            LOGE("Memory allocation error\n");
             break;
         }
 
@@ -712,10 +720,10 @@ void handle_request(int client_socket, char* buf, int buf_size, int* header_size
     }
 
     if (bytes_received <= 0) {
-        fprintf(stderr, "Failed to read request\n");
-        close(client_socket);
+        LOGE("Failed to read request\n");
+        // close(client_socket);
         free(request_header);
-        return;
+        return -1;
     }
 
     // Print the request header
@@ -726,12 +734,33 @@ void handle_request(int client_socket, char* buf, int buf_size, int* header_size
 
     // Clean up and close the client socket
     free(request_header);
+
+    return 0;
 }
 
-// void* accept_request(void* pclient)
-int accept_request(int client)
+int set_nonblocking(int sockfd) {
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    if (flags == -1) {
+        perror("fcntl");
+        return -1;
+    }
+
+    if (fcntl(sockfd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("fcntl");
+        return -1;
+    }
+
+    return 0;
+}
+
+// int accept_request(int client)
+void* accept_request_th(void* arg)
 {
-    // int client = *(int*)pclient;
+    int index = *(int*)arg;
+    int client = client_sockets[index];
+    client_sockets[index] = -1;
+
+    // LOGD("client: %d\n", client);
 
     int  header_size = 0;
     char buf[1024]   = {0};
@@ -743,8 +772,10 @@ int accept_request(int client)
     char query_string[1024] = {0};
 
     // 获取一行HTTP请求报文
-    header_size = get_request_line(client, buf, sizeof(buf));
-    // handle_request(client, buf, sizeof(buf), &header_size);
+    // header_size = get_request_line(client, buf, sizeof(buf));
+    if (handle_request(client, buf, sizeof(buf), &header_size) < 0) {
+        goto BREAK_TREAD;
+    }
 
     // LOGD("http_header: %s\n", buf);
 
@@ -768,7 +799,8 @@ int accept_request(int client)
         parse_path_with_params(url, path, query_string);
     } else {
         unimplemented(client);
-        return -1;
+        // return -1;
+        goto BREAK_TREAD;
     }
     // 以上将 request_line 解析完毕
 
@@ -780,12 +812,14 @@ int accept_request(int client)
         if (deal_query_string(query_string, content) < 0) {
             bad_request(client);
             LOGE("query_string error\n");
-            return -1;
+            // return -1;
+            goto BREAK_TREAD;
         }
 
         if (send_plain_response(client, content) != 0) {
             LOGE("send error\n");
-            return -1;
+            // return -1;
+            goto BREAK_TREAD;
         }
 
         if (s_reboot_switch) {
@@ -804,7 +838,8 @@ int accept_request(int client)
 
         if (send_plain_response(client, content) != 0) {
             LOGE("send device_info error\n");
-            return -1;
+            // return -1;
+            goto BREAK_TREAD;
         }
 
         if (s_reboot_switch) {
@@ -814,7 +849,7 @@ int accept_request(int client)
         }
 
     } else if (strcmp(path, "/1.jpg") == 0) {
-        LOGD("url: %s\n", url);
+        // LOGD("url: %s\n", url);
 
         char jpg_buf[1024 * 500] = {0};
         int  jpg_size            = 0;
@@ -867,7 +902,8 @@ int accept_request(int client)
 
             if (send_plain_response(client, response_content) != 0) {
                 LOGE("send error\n");
-                return -1;
+                // return -1;
+                goto BREAK_TREAD;
             }
         }
 
@@ -881,16 +917,21 @@ int accept_request(int client)
 #endif
         if (send_plain_response(client, device_info_content) != 0) {
             LOGE("send device_info error\n");
-            return -1;
+            // return -1;
+            goto BREAK_TREAD;
         }
     } else {
         not_found(client);
     }
 
-    // close(client);
-    // pthread_detach(pthread_self());
+BREAK_TREAD:
 
-    return 0;
+    usleep(50);
+    close(client);
+    accept_thread_id--;
+    pthread_detach(pthread_self());
+
+    // return 0;
 }
 
 // socket initial: socket() ---> bind() ---> listen()
@@ -921,16 +962,18 @@ int startup(uint16_t *port)
     }
 
     // // 设置Socket为非阻塞模式
-    // int flags = fcntl(httpd, F_GETFL, 0);
-    // fcntl(httpd, F_SETFL, flags | O_NONBLOCK);
+    // if (set_nonblocking(httpd) == -1) {
+    //     exit(EXIT_FAILURE);
+    // }
 
+    // 初始化服务器地址结构
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family      = AF_INET;
-    server_addr.sin_port        = htons(*port);
     server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port        = htons(*port);
 
-    if (bind(httpd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    if (bind(httpd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         close(httpd);
         error_die("bind");
     }
@@ -952,52 +995,45 @@ int startup(uint16_t *port)
     return (httpd);
 }
 
-pthread_t accept_thread    = 0;
-int       accept_thread_id = 0;
+// void thread_accept_request(void *param) {
+//     accept_thread_id++;
+//     while (1) {   
+//         int socket = client_sockets[socket_tail % socket_max];
+//         client_sockets[socket_tail % socket_max] = 0;
 
-int socket_max  = 10;
-int sockets[10] = {-1};
-int socket_head = 0;
-int socket_tail = 0;
+//         if (socket != 0) {
+//             socket_tail++;
+//             accept_request(socket);
+//             usleep(500);
+//             LOGI("close sock[%d]\n", socket);
+//             close(socket);
+//         } else {
+//             usleep(100);
+//         }
+//     }
+//     accept_thread_id--;
+// }
 
-void thread_accept_request(void *param) {
-    accept_thread_id++;
-    while (1) {   
-        int socket = sockets[socket_tail % socket_max];
-        sockets[socket_tail % socket_max] = 0;
+// void try_accept_request(int socket) {
+//     if (accept_thread == 0) {
+//         if (pthread_create(&accept_thread, NULL, (void *)thread_accept_request, NULL) != 0) {
+//             perror("accept_request");
+//         }
+//     }
 
-        if (socket != 0) {
-            socket_tail++;
-            accept_request(socket);
-            usleep(500);
-            close(socket);
-        } else {
-            usleep(1000);
-        }
-    }
-    accept_thread_id--;
-}
+//     if (socket_tail == socket_head) {
+//         socket_head = socket_tail = 0;
+//     }
 
-void try_accept_request(int socket) {
-    if (accept_thread == 0) {
-        if (pthread_create(&accept_thread, NULL, (void *)thread_accept_request, NULL) != 0) {
-            perror("accept_request");
-        }
-    }
-
-    if (socket_tail == socket_head) {
-        socket_head = socket_tail = 0;
-    }
-
-    if (socket_tail + socket_max == socket_head) {
-        LOGI("sock buff was filled\n");
-        LOGI("close sock[%d]\n", socket);
-        close(socket);
-    } else {
-        sockets[socket_head % socket_max] = socket;
-        socket_head++;
-    }
-}
+//     if (socket_tail + socket_max == socket_head) {
+//         LOGI("sock buff was filled\n");
+//         LOGI("close sock[%d]\n", socket);
+//         close(socket);
+//     } else {
+//         client_sockets[socket_head % socket_max] = socket;
+//         socket_head++;
+//     }
+// }
 
 void *http_server(void *arg)
 {
@@ -1005,27 +1041,94 @@ void *http_server(void *arg)
     int                server_sock = -1;
     uint16_t           port        = 80; // 监听端口号
     int                client_sock = -1;
-    struct sockaddr_in client_name;
-    socklen_t          client_name_len = sizeof(client_name);
+    struct sockaddr_in client_addr;
+    socklen_t          client_addr_len = sizeof(client_addr);
 
     server_sock = startup(&port); // 服务器端监听套接字设置
     LOGI("http running on port %d\n", port);
 
+    fd_set read_fds;
+    int    max_fd;
+    int    activity;
+    int    i = 0;
+
+    struct timeval timeout;
+    timeout.tv_sec  = 1;
+    timeout.tv_usec = 0;
+
     while (1) {
-        client_sock = accept(server_sock, (struct sockaddr*)&client_name, &client_name_len);
-        if (client_sock == -1) {
-            // error_die("accept");
-            close(client_sock);
-            continue;
-        } else {
-            // printf("HTTP client connected.\n");
+        FD_ZERO(&read_fds);
+        FD_SET(server_sock, &read_fds);
+        max_fd = server_sock;
+
+        // 将已连接的客户端socket加入到read_fds中
+        for (i = 0; i < MAX_CLIENTS; ++i) {
+            if (client_sockets[i] > 0) {
+                FD_SET(client_sockets[i], &read_fds);
+                max_fd = (max_fd > client_sockets[i]) ? max_fd : client_sockets[i];
+            }
         }
-        
-        try_accept_request(client_sock);
+
+        // 使用select等待有事件发生
+        activity = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
+        if (activity == -1) {
+            perror("select");
+            break;
+
+        } else if (activity == 0) {
+            // 没有事件发生，超时
+            // LOGE("http: select timeout\n");
+            continue;
+        }
+
+        if (FD_ISSET(server_sock, &read_fds)) {
+            client_sock = accept(server_sock, (struct sockaddr*)&client_addr, &client_addr_len);
+            if (client_sock == -1) {
+                break;
+            } else {
+                // LOGD("New connection, socket fd is %d, IP is: %s, port: %d\n",
+                //         client_sock, 
+                //         inet_ntoa(client_addr.sin_addr), 
+                //         ntohs(client_addr.sin_port));
+
+                // 将新连接的socket设置为非阻塞
+                // if (set_nonblocking(client_sock) == -1) {
+                //     exit(EXIT_FAILURE);
+                // }
+
+                // 将新连接的socket加入到client_sockets数组中
+                for (i = 0; i < MAX_CLIENTS; ++i) {
+                    if (client_sockets[i] == -1) {
+                        client_sockets[i] = client_sock;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 处理已连接的客户端socket上的数据
+        for (i = 0; i < MAX_CLIENTS; ++i) {
+            if (client_sockets[i] > 0 && FD_ISSET(client_sockets[i], &read_fds) && accept_thread_id < socket_max) {
+                int index = i;
+                pthread_t accept_id = 0;
+                pthread_create(&accept_id, NULL, accept_request_th, &index);
+                accept_thread_id++;
+                // LOGD("accept_thread_id: %d\n", accept_thread_id);
+            }
+        }
+
+        // try_accept_request(client_sock);
 
         // accept_request(client_sock);
         // usleep(500);
         // close(client_sock);
+        usleep(5);
+    }
+
+    for (i = 0; i < MAX_CLIENTS; i++) {
+        if (client_sockets[i] > 0) {
+            close(client_sockets[i]);
+        }
     }
 
     close(server_sock);
