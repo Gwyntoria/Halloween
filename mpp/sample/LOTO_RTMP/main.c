@@ -798,7 +798,7 @@ void fill_device_net_info(DeviceInfo* device_info)
 
 #define VER_MAJOR 0
 #define VER_MINOR 8
-#define VER_BUILD 4
+#define VER_BUILD 6
 
 int main(int argc, char* argv[])
 {

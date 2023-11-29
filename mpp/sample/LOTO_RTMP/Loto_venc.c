@@ -57,6 +57,8 @@ HI_S32 LOTO_VENC_WriteMJpeg(VENC_STREAM_S* pstStream) {
     VENC_PACK_S* pstData     = NULL;
     Cache*       write_cache = NULL;
     char*        buf         = NULL;
+    int*         len         = NULL;
+    int          i           = 0;
 
     is_writing = 1;
     // printf("write_buffer:       %d\n", cur_write_buffer);
@@ -77,26 +79,24 @@ HI_S32 LOTO_VENC_WriteMJpeg(VENC_STREAM_S* pstStream) {
 
     memset(write_cache, 0, sizeof(Cache));
 
+    len = &(write_cache->data_len);
     buf = write_cache->data;
-
     if (buf == NULL) {
         LOGE("buf is NULL!\n");
         return -1;
     }
 
-    int  i   = 0;
-    int* len = &(write_cache->data_len);
     for (i = 0; i < pstStream->u32PackCount; i++) {
         pstData = &pstStream->pstPack[i];
 
         memcpy(buf, pstData->pu8Addr[0], pstData->u32Len[0]);
-        buf += pstData->u32Len[0];
         *len += pstData->u32Len[0];
+        buf += pstData->u32Len[0];
         // printf("pstData->u32Len[0] = %d\n", pstData->u32Len[0]);
 
         memcpy(buf, pstData->pu8Addr[1], pstData->u32Len[1]);
-        buf += pstData->u32Len[1];
         *len += pstData->u32Len[1];
+        buf += pstData->u32Len[1];
         // printf("pstData->u32Len[1] = %d\n", pstData->u32Len[1]);
     }
 
@@ -132,7 +132,7 @@ HI_S32 LOTO_VENC_ReadMJpeg(char* jpg, int* jpg_size) {
     *jpg_size = read_cache->data_len;
     if (*jpg_size > 0) {
         memcpy(jpg, read_cache->data, *jpg_size);
-        memset(read_cache, 0, sizeof(Cache));
+        // memset(read_cache, 0, sizeof(Cache));
 
     } else {
         return -1;
@@ -249,7 +249,7 @@ HI_VOID* LOTO_COMM_VENC_GetVencStreamProc(HI_VOID* p) {
                             // break;
                         }
 
-                    } else {
+                    } else if (i == 1) {
                         s32Ret = LOTO_VENC_WriteMJpeg(&stStream);
                         if (HI_SUCCESS != s32Ret) {
                             // free(stStream.pstPack);

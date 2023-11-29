@@ -595,6 +595,7 @@ int send_html_response(int client_socket, const char *file_path)
 
 int send_plain_response(int client_socket, const char *content)
 {
+    int  ret            = 0;
     int  content_length = strlen(content);
     char response[1024] = {0};
 
@@ -605,7 +606,12 @@ int send_plain_response(int client_socket, const char *content)
     LOGD("response:\n%s\n", response);
 #endif
 
-    if (send(client_socket, response, strlen(response), MSG_NOSIGNAL) < 0) {
+    ret = send(client_socket, response, strlen(response), MSG_NOSIGNAL);
+    if (ret < 0) {
+        LOGE("send error\n");
+        return -1;
+    } else if (ret == 0) {
+        LOGE("Disconnection\n");
         return -1;
     }
 
@@ -704,7 +710,7 @@ int handle_request(int client_socket, char* buf, int buf_size, int* header_size)
         LOGE("Failed to read request\n");
         return -1;
     } else if (bytes_received == 0) {
-        LOGE("Disconnection");
+        LOGE("Disconnection\n");
         return -1;
     }
 
@@ -747,7 +753,7 @@ void* accept_request_th(void* arg)
     // LOGD("client: %d\n", client);
 
     int  header_size = 0;
-    char buf[1024]   = {0};
+    char buf[1024 * 4]   = {0};
 
     char method[256]        = {0};
     char url[256]           = {0};
@@ -758,7 +764,9 @@ void* accept_request_th(void* arg)
     // 获取一行HTTP请求报文
     // header_size = get_request_line(client, buf, sizeof(buf));
     if (handle_request(client, buf, sizeof(buf), &header_size) < 0) {
-        goto BREAK_TREAD;
+        close(client);
+        accept_thread_id--;
+        pthread_detach(pthread_self());
     }
 
     // LOGD("http_header:\n%s\n", buf);
@@ -784,7 +792,6 @@ void* accept_request_th(void* arg)
     } else {
         unimplemented(client);
         // return -1;
-        goto BREAK_TREAD;
     }
     // 以上将 request_line 解析完毕
 
@@ -797,13 +804,11 @@ void* accept_request_th(void* arg)
             bad_request(client);
             LOGE("query_string error\n");
             // return -1;
-            goto BREAK_TREAD;
         }
 
         if (send_plain_response(client, content) != 0) {
             LOGE("send error\n");
             // return -1;
-            goto BREAK_TREAD;
         }
 
         if (s_reboot_switch) {
@@ -823,7 +828,6 @@ void* accept_request_th(void* arg)
         if (send_plain_response(client, content) != 0) {
             LOGE("send device_info error\n");
             // return -1;
-            goto BREAK_TREAD;
         }
 
         if (s_reboot_switch) {
@@ -887,7 +891,6 @@ void* accept_request_th(void* arg)
             if (send_plain_response(client, response_content) != 0) {
                 LOGE("send error\n");
                 // return -1;
-                goto BREAK_TREAD;
             }
         }
 
@@ -902,13 +905,10 @@ void* accept_request_th(void* arg)
         if (send_plain_response(client, device_info_content) != 0) {
             LOGE("send device_info error\n");
             // return -1;
-            goto BREAK_TREAD;
         }
     } else {
         not_found(client);
     }
-
-BREAK_TREAD:
 
     usleep(50);
     close(client);
@@ -1037,10 +1037,12 @@ void *http_server(void *arg)
     int    i = 0;
 
     struct timeval timeout;
-    timeout.tv_sec  = 1;
-    timeout.tv_usec = 0;
+    timeout.tv_sec  = 0;
+    timeout.tv_usec = 100;
 
-    memset(client_sockets, -1, sizeof(client_sockets));
+    for (i = 0; i < MAX_CLIENTS; i++) {
+        client_sockets[i] = -1;
+    }
 
     while (1) {
         FD_ZERO(&read_fds);
@@ -1064,9 +1066,11 @@ void *http_server(void *arg)
         } else if (activity == 0) {
             // 没有事件发生，超时
             // LOGE("http: select timeout\n");
+            usleep(500);
             continue;
         }
 
+        // 判断是否是 server 端有事件发生
         if (FD_ISSET(server_sock, &read_fds)) {
             client_sock = accept(server_sock, (struct sockaddr*)&client_addr, &client_addr_len);
             if (client_sock == -1) {
@@ -1109,7 +1113,7 @@ void *http_server(void *arg)
         // accept_request(client_sock);
         // usleep(500);
         // close(client_sock);
-        usleep(5);
+        usleep(500);
     }
 
     for (i = 0; i < MAX_CLIENTS; i++) {
