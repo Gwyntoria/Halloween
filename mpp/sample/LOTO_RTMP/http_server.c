@@ -59,7 +59,7 @@ pthread_t accept_thread    = 0;
 int       accept_thread_id = 0;
 
 int socket_max  = MAX_CLIENTS;
-int client_sockets[MAX_CLIENTS] = {-1};
+int client_sockets[MAX_CLIENTS];
 int socket_head = 0;
 int socket_tail = 0;
 
@@ -698,42 +698,25 @@ void get_device_info(char *device_info_content)
 
 int handle_request(int client_socket, char* buf, int buf_size, int* header_size) {
     ssize_t bytes_received;
-    char*   request_header = NULL;
 
-    while ((bytes_received = recv(client_socket, buf, buf_size, 0)) > 0) {
-        // Append the received data to the request header
-        char* new_header = (char*)realloc(request_header, *header_size + bytes_received + 1);
-        if (new_header == NULL) {
-            LOGE("Memory allocation error\n");
-            break;
-        }
-
-        request_header = new_header;
-        memcpy(request_header + *header_size, buf, bytes_received);
-        *header_size += bytes_received;
-        request_header[*header_size] = '\0';
-
-        // Check if we have received the entire request header
-        if (strstr(request_header, "\r\n\r\n") != NULL) {
-            break;
-        }
-    }
-
-    if (bytes_received <= 0) {
+    bytes_received = recv(client_socket, buf, buf_size, 0);
+    if (bytes_received == -1) {
         LOGE("Failed to read request\n");
-        // close(client_socket);
-        free(request_header);
+        return -1;
+    } else if (bytes_received == 0) {
+        LOGE("Disconnection");
         return -1;
     }
 
-    // Print the request header
-    // printf("Received Request Header:\n%s\n", request_header);
-
-    memset(buf, 0, buf_size);
-    memcpy(buf, request_header, bytes_received);
-
-    // Clean up and close the client socket
-    free(request_header);
+    char* p = strstr(buf, "\r\n\r\n");
+    if (p != NULL) {
+        *header_size = p + 4 - buf;
+        buf[*header_size] = '\0';
+        // LOGD("header_size: %d\n", *header_size);
+    } else {
+        LOGE("HTTP header error\n");
+        return -1;
+    }
 
     return 0;
 }
@@ -756,6 +739,7 @@ int set_nonblocking(int sockfd) {
 // int accept_request(int client)
 void* accept_request_th(void* arg)
 {
+    // printf("===== accept_request_th =====\n");
     int index = *(int*)arg;
     int client = client_sockets[index];
     client_sockets[index] = -1;
@@ -777,7 +761,7 @@ void* accept_request_th(void* arg)
         goto BREAK_TREAD;
     }
 
-    // LOGD("http_header: %s\n", buf);
+    // LOGD("http_header:\n%s\n", buf);
 
     parse_request_line(buf, header_size, method, url, version);
 
@@ -892,7 +876,7 @@ void* accept_request_th(void* arg)
 
             // LOGD("total_len:    %zu\n\n", total_len);
 
-            usleep(1000 * 500);
+            usleep(1000 * 200);
 
         } else {
             char response_content[128] = {0};
@@ -1056,6 +1040,8 @@ void *http_server(void *arg)
     timeout.tv_sec  = 1;
     timeout.tv_usec = 0;
 
+    memset(client_sockets, -1, sizeof(client_sockets));
+
     while (1) {
         FD_ZERO(&read_fds);
         FD_SET(server_sock, &read_fds);
@@ -1100,6 +1086,7 @@ void *http_server(void *arg)
                 for (i = 0; i < MAX_CLIENTS; ++i) {
                     if (client_sockets[i] == -1) {
                         client_sockets[i] = client_sock;
+                        // printf("client_sockets[%d]: %d\n", i, client_sockets[i]);
                         break;
                     }
                 }
