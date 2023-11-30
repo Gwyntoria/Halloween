@@ -26,8 +26,8 @@
 
 #define MAX_CLIENTS           10
 #define MAX_PENDING           5
-#define MAX_RESPONSE_SIZE     5120
-#define MAX_HTML_CONTENT_SIZE 4096
+#define MAX_RESPONSE_SIZE     (1024 * 5)
+#define MAX_HTML_CONTENT_SIZE (1024 * 4)
 
 #define HTML_FILE_PATH   "html/index.html"
 #define DEVICE_FILE_PATH "html/device.html"
@@ -54,14 +54,6 @@ typedef struct KeyValuePair {
     char* key;
     char* value;
 } KeyValuePair;
-
-pthread_t accept_thread    = 0;
-int       accept_thread_id = 0;
-
-int socket_max  = MAX_CLIENTS;
-int client_sockets[MAX_CLIENTS];
-int socket_head = 0;
-int socket_tail = 0;
 
 static int s_reboot_switch = 0;
 
@@ -746,11 +738,6 @@ int set_nonblocking(int sockfd) {
 int accept_request(int client)
 {
     // printf("===== accept_request_th =====\n");
-    // int index = *(int*)arg;
-    // int client = client_sockets[index];
-    // client_sockets[index] = -1;
-
-    // LOGD("client: %d\n", client);
 
     int  header_size = 0;
     char buf[1024 * 4]   = {0};
@@ -764,8 +751,6 @@ int accept_request(int client)
     // 获取一行HTTP请求报文
     // header_size = get_request_line(client, buf, sizeof(buf));
     if (handle_request(client, buf, sizeof(buf), &header_size) < 0) {
-        // accept_thread_id--;
-        // pthread_detach(pthread_self());
         return -1;
     }
 
@@ -776,15 +761,9 @@ int accept_request(int client)
     // LOGD("url: %s\n", url);
 
     // printf("method:   %s\n"
-    //      "url:      %s\n"
-    //      "version:  %s\n", 
-    //      method, url, version);
-
-    // 暂时只支持get方法
-    // if (strcasecmp(method, "GET")) {
-    //     unimplemented(client);
-    //     return -1;
-    // }
+    //        "url:      %s\n"
+    //        "version:  %s\n", 
+    //        method, url, version);
 
     // 如果是 get 方法，path 可能带 ？参数
     if (strcasecmp(method, "GET") == 0) {
@@ -910,11 +889,6 @@ int accept_request(int client)
         not_found(client);
     }
 
-    // usleep(50);
-    // close(client);
-    // accept_thread_id--;
-    // pthread_detach(pthread_self());
-
     return 0;
 }
 
@@ -979,46 +953,6 @@ int startup(uint16_t *port)
     return (httpd);
 }
 
-// void thread_accept_request(void *param) {
-//     accept_thread_id++;
-//     while (1) {   
-//         int socket = client_sockets[socket_tail % socket_max];
-//         client_sockets[socket_tail % socket_max] = 0;
-
-//         if (socket != 0) {
-//             socket_tail++;
-//             accept_request(socket);
-//             usleep(500);
-//             LOGI("close sock[%d]\n", socket);
-//             close(socket);
-//         } else {
-//             usleep(100);
-//         }
-//     }
-//     accept_thread_id--;
-// }
-
-// void try_accept_request(int socket) {
-//     if (accept_thread == 0) {
-//         if (pthread_create(&accept_thread, NULL, (void *)thread_accept_request, NULL) != 0) {
-//             perror("accept_request");
-//         }
-//     }
-
-//     if (socket_tail == socket_head) {
-//         socket_head = socket_tail = 0;
-//     }
-
-//     if (socket_tail + socket_max == socket_head) {
-//         LOGI("sock buff was filled\n");
-//         LOGI("close sock[%d]\n", socket);
-//         close(socket);
-//     } else {
-//         client_sockets[socket_head % socket_max] = socket;
-//         socket_head++;
-//     }
-// }
-
 void *http_server(void *arg)
 {
     LOGI("====== Start HTTP server ======\n");
@@ -1040,6 +974,7 @@ void *http_server(void *arg)
     timeout.tv_sec  = 0;
     timeout.tv_usec = 1000 * 100;
 
+    int client_sockets[MAX_CLIENTS];
     for (i = 0; i < MAX_CLIENTS; i++) {
         client_sockets[i] = -1;
     }
@@ -1052,6 +987,7 @@ void *http_server(void *arg)
         // 将已连接的客户端socket加入到read_fds中
         for (i = 0; i < MAX_CLIENTS; ++i) {
             if (client_sockets[i] > 0) {
+                // printf("before select: sock[%d] = %d\n", i, client_sockets[i]);
                 FD_SET(client_sockets[i], &read_fds);
                 max_fd = (max_fd > client_sockets[i]) ? max_fd : client_sockets[i];
             }
@@ -1065,7 +1001,7 @@ void *http_server(void *arg)
 
         } else if (activity == 0) {
             // 没有事件发生，超时
-            // LOGE("http: select timeout\n");
+            // printf("http: select timeout\n");
             usleep(1000 * 10);
             continue;
         }
@@ -1076,15 +1012,10 @@ void *http_server(void *arg)
             if (client_sock == -1) {
                 break;
             } else {
-                // LOGD("New connection, socket fd is %d, IP is: %s, port: %d\n",
+                // printf("New connection, socket fd is %d, IP is: %s, port: %d\n",
                 //         client_sock, 
                 //         inet_ntoa(client_addr.sin_addr), 
                 //         ntohs(client_addr.sin_port));
-
-                // 将新连接的socket设置为非阻塞
-                // if (set_nonblocking(client_sock) == -1) {
-                //     exit(EXIT_FAILURE);
-                // }
 
                 // 将新连接的socket加入到client_sockets数组中
                 for (i = 0; i < MAX_CLIENTS; ++i) {
@@ -1098,23 +1029,18 @@ void *http_server(void *arg)
         }
 
         // 处理已连接的客户端socket上的数据
+        //*接收的第一个client，在接收到的本次循环中不做处理，留待下一次循环中将client加入select的轮询中
         for (i = 0; i < MAX_CLIENTS; ++i) {
-            if (client_sockets[i] > 0 && FD_ISSET(client_sockets[i], &read_fds) && accept_thread_id < socket_max) {
-                // int index = i;
-                // pthread_t accept_id = 0;
-                // pthread_create(&accept_id, NULL, accept_request_th, &index);
-                // accept_thread_id++;
+            if (client_sockets[i] > 0 && FD_ISSET(client_sockets[i], &read_fds)) {
+                // printf("after select: sock[%d] = %d\n", i, client_sockets[i]);
 
                 accept_request(client_sockets[i]);
                 usleep(500);
                 close(client_sockets[i]);
                 client_sockets[i] = -1;
 
-                // LOGD("accept_thread_id: %d\n", accept_thread_id);
             }
         }
-
-        // try_accept_request(client_sock);
 
         usleep(500);
     }
