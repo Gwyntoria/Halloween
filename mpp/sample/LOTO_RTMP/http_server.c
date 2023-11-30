@@ -620,6 +620,8 @@ void get_device_info(char *device_info_content)
         100 * g_device_info.used_ram /
         (g_device_info.used_ram + g_device_info.free_ram);
 
+    get_cpu_usage(&g_device_info.sys_cpu, &g_device_info.usr_cpu);
+
     char running_time[32] = {0};
     format_time(g_device_info.running_time, running_time);
 
@@ -641,6 +643,12 @@ void get_device_info(char *device_info_content)
             g_device_info.used_ram, 
             g_device_info.free_ram, 
             g_device_info.used_ram_perct);
+    strcat(device_info_content, temp);
+    temp[0] = '\0';
+
+    sprintf(temp, "CPU:             %.2f%% usr, %.2f%% sys\r\n", 
+            g_device_info.usr_cpu, 
+            g_device_info.sys_cpu);
     strcat(device_info_content, temp);
     temp[0] = '\0';
 

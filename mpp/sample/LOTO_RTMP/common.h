@@ -174,6 +174,8 @@ typedef struct DeviceInfo {
     int    used_ram;
     int    free_ram;
     float  used_ram_perct;
+    float  usr_cpu;
+    float  sys_cpu;
 } DeviceInfo;
 
 /**
@@ -244,6 +246,7 @@ void reboot_system();
 void format_time(time_t time, char* formattedTime);
 
 int get_sys_mem_payload(int* used_ram, int* free_ram);
+int get_cpu_usage(float *sys, float *usr);
 
 int  Com_OpenFile(FILE** file, const char* filename, const char* openType);
 int  Com_WriteFile(FILE* file, char* data, size_t dataSize);

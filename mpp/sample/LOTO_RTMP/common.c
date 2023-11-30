@@ -758,6 +758,63 @@ int get_sys_mem_payload(int *used_ram, int *free_ram)
     return 0;
 }
 
+/**
+ * @brief Get the cpu usage percentage
+ * 
+ * @param sys sys usage
+ * @param usr usr usage
+ */
+int get_cpu_usage(float *sys, float *usr) {
+    FILE *fp;
+    char buffer[128];
+    unsigned long long int user, nice, sys1, idle, iowait, irq, softirq;
+    unsigned long long int user2, nice2, sys2, idle2, iowait2, irq2, softirq2;
+    unsigned long long int total, total2;
+
+    fp = fopen("/proc/stat", "r");
+    if (fp == NULL) {
+        perror("Error opening /proc/stat");
+        return -1;
+    }
+
+    if (fgets(buffer, sizeof(buffer), fp) == NULL) {
+        perror("Error reading /proc/stat");
+        fclose(fp);
+        return -1;
+    }
+
+    sscanf(buffer, "cpu %llu %llu %llu %llu %llu %llu %llu", &user, &nice, &sys1, &idle, &iowait, &irq, &softirq);
+    total = user + nice + sys1 + idle + iowait + irq + softirq;
+
+    fclose(fp);
+
+    // sleep(1);
+    usleep(1000 * 300);
+
+    fp = fopen("/proc/stat", "r");
+    if (fp == NULL) {
+        perror("Error opening /proc/stat");
+        return -1;
+    }
+
+    if (fgets(buffer, sizeof(buffer), fp) == NULL) {
+        perror("Error reading /proc/stat");
+        fclose(fp);
+        return -1;
+    }
+
+    sscanf(buffer, "cpu %llu %llu %llu %llu %llu %llu %llu", &user2, &nice2, &sys2, &idle2, &iowait2, &irq2, &softirq2);
+    total2 = user2 + nice2 + sys2 + idle2 + iowait2 + irq2 + softirq2;
+
+    fclose(fp);
+
+    // Calculate CPU usage percentages
+    *usr = ((float)(user2 - user + nice2 - nice) / (total2 - total)) * 100.0;
+    *sys = ((float)(sys2 - sys1) / (total2 - total)) * 100.0;
+
+    return 0;
+}
+
 int Com_OpenFile(FILE **file, const char *filename, const char *openType)
 {
     *file = fopen(filename, openType);
