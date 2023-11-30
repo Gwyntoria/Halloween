@@ -742,13 +742,13 @@ int set_nonblocking(int sockfd) {
     return 0;
 }
 
-// int accept_request(int client)
-void* accept_request_th(void* arg)
+// void* accept_request_th(void* arg)
+int accept_request(int client)
 {
     // printf("===== accept_request_th =====\n");
-    int index = *(int*)arg;
-    int client = client_sockets[index];
-    client_sockets[index] = -1;
+    // int index = *(int*)arg;
+    // int client = client_sockets[index];
+    // client_sockets[index] = -1;
 
     // LOGD("client: %d\n", client);
 
@@ -764,9 +764,9 @@ void* accept_request_th(void* arg)
     // 获取一行HTTP请求报文
     // header_size = get_request_line(client, buf, sizeof(buf));
     if (handle_request(client, buf, sizeof(buf), &header_size) < 0) {
-        close(client);
-        accept_thread_id--;
-        pthread_detach(pthread_self());
+        // accept_thread_id--;
+        // pthread_detach(pthread_self());
+        return -1;
     }
 
     // LOGD("http_header:\n%s\n", buf);
@@ -791,7 +791,7 @@ void* accept_request_th(void* arg)
         parse_path_with_params(url, path, query_string);
     } else {
         unimplemented(client);
-        // return -1;
+        return -1;
     }
     // 以上将 request_line 解析完毕
 
@@ -803,12 +803,12 @@ void* accept_request_th(void* arg)
         if (deal_query_string(query_string, content) < 0) {
             bad_request(client);
             LOGE("query_string error\n");
-            // return -1;
+            return -1;
         }
 
         if (send_plain_response(client, content) != 0) {
             LOGE("send error\n");
-            // return -1;
+            return -1;
         }
 
         if (s_reboot_switch) {
@@ -890,7 +890,7 @@ void* accept_request_th(void* arg)
 
             if (send_plain_response(client, response_content) != 0) {
                 LOGE("send error\n");
-                // return -1;
+                return -1;
             }
         }
 
@@ -904,18 +904,18 @@ void* accept_request_th(void* arg)
 #endif
         if (send_plain_response(client, device_info_content) != 0) {
             LOGE("send device_info error\n");
-            // return -1;
+            return -1;
         }
     } else {
         not_found(client);
     }
 
-    usleep(50);
-    close(client);
-    accept_thread_id--;
-    pthread_detach(pthread_self());
+    // usleep(50);
+    // close(client);
+    // accept_thread_id--;
+    // pthread_detach(pthread_self());
 
-    // return 0;
+    return 0;
 }
 
 // socket initial: socket() ---> bind() ---> listen()
@@ -1038,7 +1038,7 @@ void *http_server(void *arg)
 
     struct timeval timeout;
     timeout.tv_sec  = 0;
-    timeout.tv_usec = 100;
+    timeout.tv_usec = 1000 * 100;
 
     for (i = 0; i < MAX_CLIENTS; i++) {
         client_sockets[i] = -1;
@@ -1066,7 +1066,7 @@ void *http_server(void *arg)
         } else if (activity == 0) {
             // 没有事件发生，超时
             // LOGE("http: select timeout\n");
-            usleep(500);
+            usleep(1000 * 10);
             continue;
         }
 
@@ -1100,19 +1100,22 @@ void *http_server(void *arg)
         // 处理已连接的客户端socket上的数据
         for (i = 0; i < MAX_CLIENTS; ++i) {
             if (client_sockets[i] > 0 && FD_ISSET(client_sockets[i], &read_fds) && accept_thread_id < socket_max) {
-                int index = i;
-                pthread_t accept_id = 0;
-                pthread_create(&accept_id, NULL, accept_request_th, &index);
-                accept_thread_id++;
+                // int index = i;
+                // pthread_t accept_id = 0;
+                // pthread_create(&accept_id, NULL, accept_request_th, &index);
+                // accept_thread_id++;
+
+                accept_request(client_sockets[i]);
+                usleep(500);
+                close(client_sockets[i]);
+                client_sockets[i] = -1;
+
                 // LOGD("accept_thread_id: %d\n", accept_thread_id);
             }
         }
 
         // try_accept_request(client_sock);
 
-        // accept_request(client_sock);
-        // usleep(500);
-        // close(client_sock);
         usleep(500);
     }
 
