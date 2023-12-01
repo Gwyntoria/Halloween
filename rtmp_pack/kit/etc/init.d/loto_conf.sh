@@ -85,6 +85,8 @@ ifconfig lo up
 echo "########## Run RTMP App #################"
 /root/WaController/loto_rtmp_402
 
+/root/WaController/scripts/record_time.sh
+
 sleep 30
 
 reboot
