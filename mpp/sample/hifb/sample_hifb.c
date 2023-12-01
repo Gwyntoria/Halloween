@@ -687,7 +687,7 @@ HI_VOID *SAMPLE_HIFB_PANDISPLAY(void *pData)
             /*change color*/
             pHideScreen = pShowScreen + u32FixScreenStride*var.yres;
             for(i=0; i<SAMPLE_IMAGE_NUM; i++) //IMAGE_NUM
-            {
+            {
                 if(i%2)
                 {
                     var.yoffset = 0;

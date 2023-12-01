@@ -438,7 +438,7 @@ static long tlv320aic31_ioctl(struct file *file, unsigned int cmd, unsigned long
                         tlv320aic31_write(IIC_device_addr[chip_num],11,0x1);    /* R=1 */
                         tlv320aic31_write(IIC_device_addr[chip_num],101,0x0);
                         tlv320aic31_write(IIC_device_addr[chip_num],102,0xc2);
-                    }
+                    }
                 }
                 else
                 {
