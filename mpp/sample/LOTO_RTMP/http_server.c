@@ -707,8 +707,13 @@ int handle_request(int client_socket, char* buf, int buf_size, int* header_size)
 
     bytes_received = recv(client_socket, buf, buf_size, 0);
     if (bytes_received == -1) {
-        LOGE("Failed to read request\n");
-        return -1;
+        if (errno == EAGAIN || errno == EWOULDBLOCK ) {
+            printf("null data\n");
+            return 1;
+        } else {
+            LOGE("Failed to read request\n");
+            return -1;
+        }
     } else if (bytes_received == 0) {
         LOGE("Disconnection\n");
         return -1;
@@ -758,8 +763,11 @@ int accept_request(int client)
 
     // 获取一行HTTP请求报文
     // header_size = get_request_line(client, buf, sizeof(buf));
-    if (handle_request(client, buf, sizeof(buf), &header_size) < 0) {
+    int ret = handle_request(client, buf, sizeof(buf), &header_size);
+    if (ret == -1) {
         return -1;
+    } else if (ret == 1) {
+        return 1;
     }
 
     // LOGD("http_header:\n%s\n", buf);
@@ -830,7 +838,7 @@ int accept_request(int client)
         int  jpg_size            = 0;
 
         if (LOTO_COMM_VENC_GetSnapJpg(jpg_buf, &jpg_size) == 0) {
-            // LOGD("jpg_size:     %d\n", jpg_size);
+            // printf("jpg_size:     %d\n", jpg_size);
 
             send_header(client, "image/jpeg", jpg_size);
 
@@ -843,31 +851,33 @@ int accept_request(int client)
                 memcpy(buf, jpg_buf + total_len, len);
 
                 ssize_t send_len = send(client, buf, len, MSG_NOSIGNAL);
-                if (send_len < 0) {
-                    LOGD("send jpg error\n");
-
+                if (send_len == -1) {
                     if (errno == ECONNRESET) {
                         LOGE("client terminated the connection\n");
                         break;
                     } else if (errno == EINTR) {
                         LOGE("send interrupted\n");
                         break;
+                    } else if(errno == EAGAIN || errno == EWOULDBLOCK) {
+                        // printf("Send buffer is full. Try again later.\n");
+                        usleep(5);
+                        continue;
                     } else {
+                        LOGD("send jpg error\n");
                         break;
                     }
                 } else if (send_len == 0) {
                     LOGE("connection closed\n");
                     break;
                 }
-                // usleep(20);
                 total_len += send_len;
 
-                // LOGD("total_len: %ld, send_len: %ld\n", total_len, send_len);
+                // printf("total_len: %ld, send_len: %ld\n", total_len, send_len);
             }
 
-            // LOGD("total_len:    %zu\n\n", total_len);
+            // printf("total_len:    %zu\n\n", total_len);
 
-            usleep(1000 * 200);
+            // usleep(500);
 
         } else {
             char response_content[128] = {0};
@@ -927,10 +937,10 @@ int startup(uint16_t *port)
         // return -1;
     }
 
-    // // 设置Socket为非阻塞模式
-    // if (set_nonblocking(httpd) == -1) {
-    //     exit(EXIT_FAILURE);
-    // }
+    // 设置Socket为非阻塞模式
+    if (set_nonblocking(httpd) == -1) {
+        exit(EXIT_FAILURE);
+    }
 
     // 初始化服务器地址结构
     struct sockaddr_in server_addr;
@@ -1025,6 +1035,11 @@ void *http_server(void *arg)
                 //         inet_ntoa(client_addr.sin_addr), 
                 //         ntohs(client_addr.sin_port));
 
+                if (set_nonblocking(client_sock) == -1) {
+                    close(client_sock);
+                    break;
+                }
+
                 // 将新连接的socket加入到client_sockets数组中
                 for (i = 0; i < MAX_CLIENTS; ++i) {
                     if (client_sockets[i] == -1) {
@@ -1042,7 +1057,10 @@ void *http_server(void *arg)
             if (client_sockets[i] > 0 && FD_ISSET(client_sockets[i], &read_fds)) {
                 // printf("after select: sock[%d] = %d\n", i, client_sockets[i]);
 
-                accept_request(client_sockets[i]);
+                if (accept_request(client_sockets[i]) == 1) {
+                    continue;
+                }
+
                 usleep(500);
                 close(client_sockets[i]);
                 client_sockets[i] = -1;
