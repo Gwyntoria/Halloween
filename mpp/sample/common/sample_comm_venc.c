@@ -31,6 +31,8 @@ extern "C"{
 #include "sample_comm.h"
 #include "../LOTO_RTMP/ringfifo.h"
 #include "../LOTO_RTMP/common.h"
+
+extern int g_framerate;
  
 const HI_U8 g_SOI[2] = {0xFF, 0xD8};
 const HI_U8 g_EOI[2] = {0xFF, 0xD9};
@@ -290,7 +292,6 @@ HI_S32 SAMPLE_COMM_VENC_SaveStream(PAYLOAD_TYPE_E enType,FILE *pFd, VENC_STREAM_
     return s32Ret;
 }
 
-extern int g_framerate;
 
 /******************************************************************************
 * funciton : Start venc stream mode (h264, mjpeg)
